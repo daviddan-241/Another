@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export interface PumpCoin {
   mint: string;
@@ -16,6 +16,17 @@ export interface PumpCoin {
   telegram?: string;
   website?: string;
   discord?: string;
+}
+
+export interface PumpReply {
+  id: number;
+  mint: string;
+  user: string;
+  message: string;
+  timestamp: number;
+  profile_image?: string;
+  username?: string;
+  likes?: number;
 }
 
 const API = "/api/pumpfun";
@@ -50,6 +61,16 @@ export function useTrendingCoins() {
     queryFn: () => get("trending"),
     refetchInterval: 30_000,
     staleTime: 20_000,
+  });
+}
+
+export function useCoinReplies(mint: string | null) {
+  return useQuery<PumpReply[]>({
+    queryKey: ["replies", mint],
+    queryFn: () => get(`coin/${mint}/replies?limit=50`),
+    enabled: !!mint,
+    refetchInterval: 8_000,
+    staleTime: 5_000,
   });
 }
 
