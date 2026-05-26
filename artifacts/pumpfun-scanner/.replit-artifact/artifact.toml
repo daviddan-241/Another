@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Pump.fun Scanner"
+version = "1.0.0"
+id = "artifacts/pumpfun-scanner"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 26182
+
+[services.development]
+run = "pnpm --filter @workspace/pumpfun-scanner run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pumpfun-scanner", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/pumpfun-scanner", "run", "serve" ]
+
+[services.env]
+PORT = "26182"
+BASE_PATH = "/"

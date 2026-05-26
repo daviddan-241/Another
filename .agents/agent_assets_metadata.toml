@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "HN_a5hCdhZk43XnWixVBR"
+uri = "file://artifacts/pumpfun-scanner/assets/images/icon.png"
+type = "image"
+title = "pumpfun scanner icon"
