@@ -1,34 +1,54 @@
 import { useState, useCallback } from "react";
-import { RefreshCw, Send, CheckCircle, Video, MessageCircle, TrendingUp, Zap, Bell } from "lucide-react";
+import { RefreshCw, Bell, CheckCircle, Video, MessageCircle, TrendingUp, Zap, Microscope } from "lucide-react";
 import { CoinCard } from "@/components/CoinCard";
 import { ChatPanel } from "@/components/ChatPanel";
-import { useLiveCoins, useDiscordCoins, useTrendingCoins, useTelegramTest } from "@/hooks/usePumpFun";
+import {
+  useLiveCoins,
+  useDiscordCoins,
+  useTrendingCoins,
+  useMicroCoins,
+  useTelegramTest,
+} from "@/hooks/usePumpFun";
 import type { PumpCoin } from "@/hooks/usePumpFun";
 
-type Tab = "live" | "discord" | "trending";
+type Tab = "live" | "discord" | "micro" | "trending";
 
-const TABS: { id: Tab; icon: React.ReactNode; label: string; color: string; accentClass: string }[] = [
-  { id: "live",     icon: <Video size={14} />,         label: "Live Coins",   color: "text-red-400",    accentClass: "border-red-500 text-red-400" },
-  { id: "discord",  icon: <MessageCircle size={14} />, label: "Has Discord",  color: "text-indigo-400", accentClass: "border-indigo-500 text-indigo-400" },
-  { id: "trending", icon: <TrendingUp size={14} />,    label: "Trending",     color: "text-[#FFD700]",  accentClass: "border-[#FFD700] text-[#FFD700]" },
+const TABS: {
+  id: Tab;
+  icon: React.ReactNode;
+  label: string;
+  accentClass: string;
+  dotColor: string;
+}[] = [
+  {
+    id: "live",
+    icon: <Video size={13} />,
+    label: "Live",
+    accentClass: "border-red-500 text-red-400",
+    dotColor: "bg-red-500",
+  },
+  {
+    id: "discord",
+    icon: <MessageCircle size={13} />,
+    label: "Discord",
+    accentClass: "border-indigo-500 text-indigo-400",
+    dotColor: "bg-indigo-500",
+  },
+  {
+    id: "micro",
+    icon: <Microscope size={13} />,
+    label: "Micro <$5K",
+    accentClass: "border-amber-400 text-amber-400",
+    dotColor: "bg-amber-400",
+  },
+  {
+    id: "trending",
+    icon: <TrendingUp size={13} />,
+    label: "Trending",
+    accentClass: "border-[#FFD700] text-[#FFD700]",
+    dotColor: "bg-[#FFD700]",
+  },
 ];
-
-function EmptyState({ mode }: { mode: Tab }) {
-  const info = {
-    live:     { icon: <Video size={32} className="text-[#1a1a1a]" />,         title: "No Live Coins",     sub: "No coins currently livestreaming AND under 1 hour old. Scanning every 15s." },
-    discord:  { icon: <MessageCircle size={32} className="text-[#1a1a1a]" />, title: "No Discord Coins",  sub: "No coins launched in the last 6 hours have a Discord server linked." },
-    trending: { icon: <TrendingUp size={32} className="text-[#1a1a1a]" />,    title: "Loading Trending",  sub: "Fetching top coins by market cap from pump.fun..." },
-  }[mode];
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-[#0d0d0d] border border-[#1a1a1a] flex items-center justify-center mb-4">
-        {info.icon}
-      </div>
-      <p className="text-white font-bold text-lg mb-2">{info.title}</p>
-      <p className="text-[#555] text-sm max-w-xs leading-relaxed">{info.sub}</p>
-    </div>
-  );
-}
 
 function SkeletonCard() {
   return (
@@ -54,26 +74,66 @@ function SkeletonCard() {
   );
 }
 
+function EmptyState({ mode }: { mode: Tab }) {
+  const info: Record<Tab, { icon: React.ReactNode; title: string; sub: string }> = {
+    live: {
+      icon: <Video size={30} className="text-[#1a1a1a]" />,
+      title: "No Live Coins Right Now",
+      sub: "No coins currently livestreaming AND under 1 hour old. Auto-scanning every 15s.",
+    },
+    discord: {
+      icon: <MessageCircle size={30} className="text-[#1a1a1a]" />,
+      title: "No Discord Coins",
+      sub: "No coins launched in the last 6 hours with a Discord server linked.",
+    },
+    micro: {
+      icon: <Microscope size={30} className="text-[#1a1a1a]" />,
+      title: "No Sub-$5K Coins",
+      sub: "Scanning pump.fun for fresh launches under $5,000 market cap. Auto-refreshes every 12s.",
+    },
+    trending: {
+      icon: <TrendingUp size={30} className="text-[#1a1a1a]" />,
+      title: "Loading Trending",
+      sub: "Fetching top coins by market cap from pump.fun…",
+    },
+  };
+  const { icon, title, sub } = info[mode];
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-[#0d0d0d] border border-[#1a1a1a] flex items-center justify-center mb-4">
+        {icon}
+      </div>
+      <p className="text-white font-bold text-lg mb-2">{title}</p>
+      <p className="text-[#555] text-sm max-w-xs leading-relaxed">{sub}</p>
+    </div>
+  );
+}
+
 export default function Scanner() {
-  const [tab, setTab] = useState<Tab>("live");
+  const [tab, setTab] = useState<Tab>("micro");
   const [openChat, setOpenChat] = useState<PumpCoin | null>(null);
   const [sent, setSent] = useState(false);
 
-  const liveQ    = useLiveCoins();
-  const discordQ = useDiscordCoins();
+  const liveQ     = useLiveCoins();
+  const discordQ  = useDiscordCoins();
+  const microQ    = useMicroCoins();
   const trendingQ = useTrendingCoins();
   const telegramTest = useTelegramTest();
 
-  const liveCoins    = liveQ.data ?? [];
-  const discordCoins = discordQ.data ?? [];
-  const trendingCoins = trendingQ.data ?? [];
+  const dataMap: Record<Tab, PumpCoin[]> = {
+    live:     liveQ.data     ?? [],
+    discord:  discordQ.data  ?? [],
+    micro:    microQ.data    ?? [],
+    trending: trendingQ.data ?? [],
+  };
 
-  const activeQ     = tab === "live" ? liveQ : tab === "discord" ? discordQ : trendingQ;
-  const activeCoins = tab === "live" ? liveCoins : tab === "discord" ? discordCoins : trendingCoins;
+  const queryMap = { live: liveQ, discord: discordQ, micro: microQ, trending: trendingQ };
+  const activeQ     = queryMap[tab];
+  const activeCoins = dataMap[tab];
 
   const handleRefresh = useCallback(() => {
-    liveQ.refetch(); discordQ.refetch(); trendingQ.refetch();
-  }, [liveQ, discordQ, trendingQ]);
+    liveQ.refetch(); discordQ.refetch(); microQ.refetch(); trendingQ.refetch();
+  }, [liveQ, discordQ, microQ, trendingQ]);
 
   async function handleTelegramTest() {
     await telegramTest.mutateAsync(undefined);
@@ -82,11 +142,10 @@ export default function Scanner() {
   }
 
   function handleOpenChat(coin: PumpCoin) {
-    setOpenChat(prev => prev?.mint === coin.mint ? null : coin);
+    setOpenChat((prev) => (prev?.mint === coin.mint ? null : coin));
   }
 
-  const tabObj = TABS.find(t => t.id === tab)!;
-  const countsMap = { live: liveCoins.length, discord: discordCoins.length, trending: trendingCoins.length };
+  const tabObj = TABS.find((t) => t.id === tab)!;
 
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col">
@@ -96,20 +155,27 @@ export default function Scanner() {
           {/* Brand */}
           <div className="flex items-center gap-2.5">
             <div className="w-2 h-2 rounded-full bg-[#00E676] animate-pulse shadow-[0_0_8px_#00E676]" />
-            <span className="text-white font-black text-lg tracking-tight">PUMP<span className="text-[#00E676]">SCAN</span></span>
-            <span className="hidden sm:inline text-[#333] text-xs font-mono bg-[#0d0d0d] border border-[#1a1a1a] px-2 py-0.5 rounded-lg">v2.0 LIVE</span>
+            <span className="text-white font-black text-lg tracking-tight">
+              PUMP<span className="text-[#00E676]">SCAN</span>
+            </span>
+            <span className="hidden sm:inline text-[#333] text-[11px] font-mono bg-[#0d0d0d] border border-[#1a1a1a] px-2 py-0.5 rounded-lg">
+              LIVE
+            </span>
           </div>
 
           {/* Stat pills */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1.5">
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/15">
-              {liveCoins.length} LIVE
+              {dataMap.live.length} LIVE
             </span>
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/15">
-              {discordCoins.length} DISCORD
+              {dataMap.discord.length} DISCORD
+            </span>
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/15">
+              {dataMap.micro.length} MICRO
             </span>
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/15">
-              {trendingCoins.length} TRENDING
+              {dataMap.trending.length} TRENDING
             </span>
           </div>
 
@@ -117,7 +183,6 @@ export default function Scanner() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              title="Refresh all feeds"
               className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[#1a1a1a] bg-[#0d0d0d] text-[#555] hover:text-white hover:border-[#333] transition-colors text-xs font-semibold"
             >
               <RefreshCw size={12} className={activeQ.isFetching ? "animate-spin text-[#00E676]" : ""} />
@@ -139,60 +204,119 @@ export default function Scanner() {
         </div>
 
         {/* Tab bar */}
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex items-center gap-0 border-t border-[#0d0d0d]">
-          {TABS.map(t => {
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex border-t border-[#0d0d0d]">
+          {TABS.map((t) => {
             const active = tab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 text-xs font-bold border-b-2 transition-all ${
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                   active ? `${t.accentClass} bg-white/[0.02]` : "border-transparent text-[#444] hover:text-[#888]"
                 }`}
               >
                 {t.icon}
                 {t.label}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${active ? "bg-white/10" : "bg-[#0d0d0d] text-[#333]"}`}>
-                  {countsMap[t.id]}
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-black ${
+                    active ? "bg-white/10" : "bg-[#0d0d0d] text-[#333]"
+                  }`}
+                >
+                  {dataMap[t.id].length}
                 </span>
+                {/* Pulse dot for live/micro tabs when loading */}
+                {(t.id === "live" || t.id === "micro") && queryMap[t.id].isFetching && (
+                  <span className={`w-1.5 h-1.5 rounded-full ${t.dotColor} animate-pulse`} />
+                )}
               </button>
             );
           })}
         </div>
       </header>
 
+      {/* ── Micro cap banner ── */}
+      {tab === "micro" && (
+        <div className="border-b border-amber-400/10 bg-amber-400/5 px-4 sm:px-6 py-2.5">
+          <div className="max-w-screen-2xl mx-auto flex items-center gap-3">
+            <Microscope size={14} className="text-amber-400 shrink-0" />
+            <p className="text-amber-300/80 text-xs">
+              <span className="font-bold text-amber-400">Micro cap scanner</span> — showing fresh pump.fun launches
+              under <span className="font-bold text-amber-400">$5,000 market cap</span>. These are the earliest possible
+              entry points. High risk — DYOR. All saved to your database.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Body ── */}
       <div className="flex-1 flex min-h-0">
         {/* Coin grid */}
-        <div className={`flex-1 overflow-y-auto transition-all duration-300 ${openChat ? "hidden lg:block" : ""}`}>
+        <div className={`flex-1 overflow-y-auto ${openChat ? "hidden lg:block" : ""}`}>
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-5">
             {activeQ.isError ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <Zap size={36} className="text-[#1a1a1a] mb-3" />
                 <p className="text-white font-bold">Could not reach pump.fun</p>
-                <p className="text-[#555] text-sm mt-1">Check your connection · Auto-retries every 15s</p>
-                <button onClick={handleRefresh} className="mt-4 px-4 py-2 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#555] hover:text-white text-sm font-semibold transition-colors">
+                <p className="text-[#555] text-sm mt-1">Check your connection · Auto-retries</p>
+                <button
+                  onClick={handleRefresh}
+                  className="mt-4 px-4 py-2 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#555] hover:text-white text-sm font-semibold transition-colors"
+                >
                   Retry now
                 </button>
               </div>
             ) : activeQ.isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
+              <div
+                className={`grid gap-3 ${
+                  openChat
+                    ? "grid-cols-1 sm:grid-cols-2"
+                    : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                }`}
+              >
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
               </div>
             ) : activeCoins.length === 0 ? (
               <EmptyState mode={tab} />
             ) : (
-              <div className={`grid gap-3 ${openChat ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"}`}>
-                {activeCoins.map(coin => (
-                  <CoinCard
-                    key={coin.mint}
-                    coin={coin}
-                    mode={tab}
-                    onOpenChat={handleOpenChat}
-                    chatOpen={openChat?.mint === coin.mint}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Coin count bar */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${tabObj.dotColor} ${tab === "live" || tab === "micro" ? "animate-pulse" : ""}`} />
+                    <span className="text-[#555] text-xs">
+                      <span className="text-white font-bold">{activeCoins.length}</span>{" "}
+                      {tab === "live" && "coins livestreaming now"}
+                      {tab === "discord" && "coins with Discord servers"}
+                      {tab === "micro" && "micro cap launches under $5K"}
+                      {tab === "trending" && "trending by market cap"}
+                    </span>
+                  </div>
+                  {activeQ.isFetching && (
+                    <span className="text-[#333] text-[10px] flex items-center gap-1">
+                      <RefreshCw size={9} className="animate-spin" /> updating…
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`grid gap-3 ${
+                    openChat
+                      ? "grid-cols-1 sm:grid-cols-2"
+                      : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                  }`}
+                >
+                  {activeCoins.map((coin) => (
+                    <CoinCard
+                      key={coin.mint}
+                      coin={coin}
+                      mode={tab === "micro" ? "micro" : tab}
+                      onOpenChat={handleOpenChat}
+                      chatOpen={openChat?.mint === coin.mint}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

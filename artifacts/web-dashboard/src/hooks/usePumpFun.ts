@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 export interface PumpCoin {
   mint: string;
@@ -27,6 +27,21 @@ export interface PumpReply {
   profile_image?: string;
   username?: string;
   likes?: number;
+}
+
+export interface SavedCoin {
+  mint: string;
+  name: string;
+  symbol: string;
+  description?: string | null;
+  imageUri?: string | null;
+  usdMarketCap?: string | null;
+  category: string;
+  isCurrentlyLive?: boolean | null;
+  discord?: string | null;
+  twitter?: string | null;
+  replyCount?: number | null;
+  firstSeenAt: string;
 }
 
 const API = "/api/pumpfun";
@@ -59,6 +74,24 @@ export function useTrendingCoins() {
   return useQuery<PumpCoin[]>({
     queryKey: ["trending"],
     queryFn: () => get("trending"),
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+  });
+}
+
+export function useMicroCoins() {
+  return useQuery<PumpCoin[]>({
+    queryKey: ["micro"],
+    queryFn: () => get("micro?limit=100"),
+    refetchInterval: 12_000,
+    staleTime: 8_000,
+  });
+}
+
+export function useSavedCoins(category?: string) {
+  return useQuery<SavedCoin[]>({
+    queryKey: ["saved", category],
+    queryFn: () => get(`saved?limit=200${category ? `&category=${category}` : ""}`),
     refetchInterval: 30_000,
     staleTime: 20_000,
   });

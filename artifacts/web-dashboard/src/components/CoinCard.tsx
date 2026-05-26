@@ -3,7 +3,7 @@ import type { PumpCoin } from "@/hooks/usePumpFun";
 
 interface CoinCardProps {
   coin: PumpCoin;
-  mode: "live" | "discord" | "trending";
+  mode: "live" | "discord" | "trending" | "micro";
   onOpenChat?: (coin: PumpCoin) => void;
   chatOpen?: boolean;
 }
@@ -47,6 +47,14 @@ const MODE_STYLES = {
     actionBtn: "border-[#FFD700]/30 text-[#FFD700] bg-[#FFD700]/10 hover:bg-[#FFD700]/20",
     actionIcon: <TrendingUp size={13} />,
     actionLabel: "Trending",
+  },
+  micro: {
+    badge: "bg-amber-400/15 text-amber-400 border-amber-400/30",
+    label: "🔬 <$5K",
+    glow: "hover:border-amber-400/30",
+    actionBtn: "border-amber-400/30 text-amber-400 bg-amber-400/10 hover:bg-amber-400/20",
+    actionIcon: <ExternalLink size={13} />,
+    actionLabel: "Pump.fun",
   },
 } as const;
 
