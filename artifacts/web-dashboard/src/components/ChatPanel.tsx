@@ -371,7 +371,7 @@ export function ChatPanel({ coin, onClose }: ChatPanelProps) {
                 placeholder="Write a comment… (Enter to post)"
                 rows={2}
                 maxLength={500}
-                className="flex-1 bg-[#111] border border-[#1a1a1a] rounded-xl text-xs text-white placeholder-[#333] px-3 py-2 resize-none focus:outline-none focus:border-[#00E676]/40 transition-colors"
+                className="flex-1 bg-[#111] border border-[#1a1a1a] rounded-xl text-[16px] leading-snug text-white placeholder-[#333] px-3 py-2.5 resize-none focus:outline-none focus:border-[#00E676]/40 transition-colors"
               />
               <button
                 onClick={handlePost}

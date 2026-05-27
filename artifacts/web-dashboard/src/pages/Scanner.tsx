@@ -203,16 +203,16 @@ export default function Scanner() {
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex border-t border-[#0d0d0d]">
+        {/* Tab bar — scrollable on mobile */}
+        <div className="max-w-screen-2xl mx-auto px-2 sm:px-6 flex border-t border-[#0d0d0d] overflow-x-auto scrollbar-none">
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                  active ? `${t.accentClass} bg-white/[0.02]` : "border-transparent text-[#444] hover:text-[#888]"
+                className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap shrink-0 min-h-[44px] ${
+                  active ? `${t.accentClass} bg-white/[0.02]` : "border-transparent text-[#444]"
                 }`}
               >
                 {t.icon}
@@ -224,7 +224,6 @@ export default function Scanner() {
                 >
                   {dataMap[t.id].length}
                 </span>
-                {/* Pulse dot for live/micro tabs when loading */}
                 {(t.id === "live" || t.id === "micro") && queryMap[t.id].isFetching && (
                   <span className={`w-1.5 h-1.5 rounded-full ${t.dotColor} animate-pulse`} />
                 )}

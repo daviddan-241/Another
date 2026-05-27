@@ -16,6 +16,7 @@ export interface PumpCoin {
   telegram?: string;
   website?: string;
   discord?: string;
+  streamEnded?: boolean;
 }
 
 export interface PumpReply {

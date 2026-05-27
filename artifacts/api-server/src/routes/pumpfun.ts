@@ -235,18 +235,17 @@ async function pumpFetch(url: string): Promise<any> {
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 
-// Live coins — livestreaming AND <1hr old  (TTL: 2h dedup)
+// Live coins — all currently livestreaming + recently ended ones from DB (TTL: 2h dedup)
 router.get("/pumpfun/live", async (req: Request, res: Response) => {
   try {
-    const oneHourAgoMs = Date.now() - 60 * 60 * 1000;
     const data = await pumpFetch(
       `${PUMP_API}/coins?limit=200&sort=last_trade_unix_time&order=DESC&includeNsfw=false`
     );
-    const coins = (data as any[]).filter(
-      (c: any) => (c.created_timestamp ?? 0) > oneHourAgoMs && c.is_currently_live === true
-    );
+    const currentLive = (data as any[]).filter((c: any) => c.is_currently_live === true);
+
+    // Save + alert current live coins
     await Promise.all(
-      coins.map(async (coin: any) => {
+      currentLive.map(async (coin: any) => {
         await saveCoin(coin, "live");
         const alertId = `live:${coin.mint}`;
         if (!(await hasAlertBeenSent(alertId, 2))) {
@@ -257,28 +256,61 @@ router.get("/pumpfun/live", async (req: Request, res: Response) => {
         }
       })
     );
-    res.json(coins);
+
+    // Load recently seen live coins from DB (last 2h) — keeps ended streams visible
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const savedLive = await db
+      .select()
+      .from(scannedCoins)
+      .where(and(eq(scannedCoins.category, "live"), gt(scannedCoins.lastSeenAt, twoHoursAgo)))
+      .orderBy(sql`last_seen_at DESC`)
+      .limit(100);
+
+    const currentMints = new Set(currentLive.map((c: any) => c.mint as string));
+    const endedCoins = savedLive
+      .filter((row) => !currentMints.has(row.mint))
+      .map((row) => ({
+        mint: row.mint,
+        name: row.name,
+        symbol: row.symbol,
+        description: row.description,
+        image_uri: row.imageUri,
+        created_timestamp: row.createdTimestamp ?? 0,
+        usd_market_cap: parseFloat(row.usdMarketCap ?? "0"),
+        is_currently_live: false,
+        streamEnded: true,
+        reply_count: row.replyCount ?? 0,
+        creator: row.creator,
+        twitter: row.twitter,
+        telegram: row.telegram,
+        website: row.website,
+        discord: row.discord,
+      }));
+
+    res.json([...currentLive, ...endedCoins]);
   } catch (err) {
     req.log.error({ err }, "Error fetching live coins");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Discord coins — has Discord AND <6hr old  (TTL: 8h dedup)
+// Discord coins — has Discord + persisted from DB (TTL: 8h dedup)
 router.get("/pumpfun/discord", async (req: Request, res: Response) => {
   try {
     const sixHoursAgoMs = Date.now() - 6 * 60 * 60 * 1000;
     const data = await pumpFetch(
       `${PUMP_API}/coins?limit=200&sort=created_timestamp&order=DESC&includeNsfw=false`
     );
-    const coins = (data as any[]).filter(
+    const currentDiscord = (data as any[]).filter(
       (c: any) =>
         (c.created_timestamp ?? 0) > sixHoursAgoMs &&
         typeof c.discord === "string" &&
         c.discord.trim() !== ""
     );
+
+    // Save + alert current discord coins
     await Promise.all(
-      coins.map(async (coin: any) => {
+      currentDiscord.map(async (coin: any) => {
         await saveCoin(coin, "discord");
         const alertId = `discord:${coin.mint}`;
         if (!(await hasAlertBeenSent(alertId, 8))) {
@@ -289,7 +321,37 @@ router.get("/pumpfun/discord", async (req: Request, res: Response) => {
         }
       })
     );
-    res.json(coins);
+
+    // Load persisted discord coins from DB (last 6h) so they stay visible
+    const sixHoursAgo = new Date(sixHoursAgoMs);
+    const savedDiscord = await db
+      .select()
+      .from(scannedCoins)
+      .where(and(eq(scannedCoins.category, "discord"), gt(scannedCoins.firstSeenAt, sixHoursAgo)))
+      .orderBy(sql`first_seen_at DESC`)
+      .limit(200);
+
+    const currentMints = new Set(currentDiscord.map((c: any) => c.mint as string));
+    const dbOnly = savedDiscord
+      .filter((row) => !currentMints.has(row.mint))
+      .map((row) => ({
+        mint: row.mint,
+        name: row.name,
+        symbol: row.symbol,
+        description: row.description,
+        image_uri: row.imageUri,
+        created_timestamp: row.createdTimestamp ?? 0,
+        usd_market_cap: parseFloat(row.usdMarketCap ?? "0"),
+        is_currently_live: false,
+        discord: row.discord,
+        reply_count: row.replyCount ?? 0,
+        creator: row.creator,
+        twitter: row.twitter,
+        telegram: row.telegram,
+        website: row.website,
+      }));
+
+    res.json([...currentDiscord, ...dbOnly]);
   } catch (err) {
     req.log.error({ err }, "Error fetching discord coins");
     res.status(500).json({ error: "Internal server error" });
@@ -317,21 +379,9 @@ router.get("/pumpfun/micro", async (req: Request, res: Response) => {
       `${PUMP_API}/coins?limit=${limit}&sort=created_timestamp&order=DESC&includeNsfw=false&minMarketCap=0&maxMarketCap=5000`
     );
     const coins = data as any[];
-    // Only alert for coins created in the last 30 minutes (truly fresh)
-    const freshMs = Date.now() - 30 * 60 * 1000;
+    // Save micro coins to DB only — no Telegram alerts for micro cap
     await Promise.all(
-      coins.slice(0, 30).map(async (coin: any) => {
-        await saveCoin(coin, "micro");
-        if ((coin.created_timestamp ?? 0) > freshMs) {
-          const alertId = `micro:${coin.mint}`;
-          if (!(await hasAlertBeenSent(alertId, 1))) {
-            await markAlertSent(alertId, coin.mint, "micro");
-            await sendTelegram(buildMicroAlert(coin)).catch((e) =>
-              req.log.error({ err: e }, "Telegram send failed")
-            );
-          }
-        }
-      })
+      coins.slice(0, 30).map((coin: any) => saveCoin(coin, "micro"))
     );
     res.json(coins);
   } catch (err) {
