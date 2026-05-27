@@ -198,7 +198,9 @@ router.get("/pumpfun/live", async (req: Request, res: Response) => {
     const data = await pumpFetch(
       `${PUMP_API}/coins?limit=200&sort=last_trade_unix_time&order=DESC&includeNsfw=false`
     );
-    const currentLive = (data as any[]).filter((c: any) => c.is_currently_live === true);
+    const currentLive = (data as any[]).filter(
+      (c: any) => c.is_currently_live === true && Number(c.usd_market_cap ?? 0) < 5000
+    );
 
     // Save + alert current live coins
     await Promise.all(
@@ -225,7 +227,7 @@ router.get("/pumpfun/live", async (req: Request, res: Response) => {
 
     const currentMints = new Set(currentLive.map((c: any) => c.mint as string));
     const endedCoins = savedLive
-      .filter((row) => !currentMints.has(row.mint))
+      .filter((row) => !currentMints.has(row.mint) && parseFloat(row.usdMarketCap ?? "0") < 5000)
       .map((row) => ({
         mint: row.mint,
         name: row.name,
@@ -441,6 +443,40 @@ router.post("/pumpfun/coin/:mint/reply", async (req: Request, res: Response) => 
   }
 });
 
+// Group chat invite — proxies chat-api-v1.pump.fun/invites/coin/:mint
+router.get("/pumpfun/coin/:mint/groupchat", async (req: Request, res: Response) => {
+  try {
+    const { mint } = req.params;
+    const resp = await fetch(
+      `https://chat-api-v1.pump.fun/invites/coin/${mint}`,
+      {
+        headers: {
+          ...PUMP_HEADERS,
+          Accept: "application/json",
+        },
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body: any = await resp.json().catch(() => ({}));
+    // Return structured response regardless of 404
+    if (!resp.ok || body?.failedReason === "not_found") {
+      res.json({ hasGroupChat: false, channelId: null, inviteUrl: null });
+      return;
+    }
+    res.json({
+      hasGroupChat: true,
+      channelId: body.channelId ?? body.id ?? null,
+      inviteUrl: body.inviteUrl ?? body.url ?? `https://pump.fun/${mint}`,
+      memberCount: body.memberCount ?? body.members ?? null,
+      raw: body,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching group chat");
+    res.json({ hasGroupChat: false, channelId: null, inviteUrl: null });
+  }
+});
+
 // Coin detail
 router.get("/pumpfun/coin/:mint", async (req: Request, res: Response) => {
   try {
@@ -464,15 +500,11 @@ router.get("/pumpfun/coin/:mint", async (req: Request, res: Response) => {
 router.post("/pumpfun/telegram-test", async (req: Request, res: Response) => {
   try {
     await sendTelegram(
-      `✅ ━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `<b>🤖  PUMP SCANNER ACTIVE</b>\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `Your Telegram alerts are working! 🎉\n\n` +
-      `📺 <b>Live alerts</b> → coins livestreaming &lt;1hr old\n` +
-      `💬 <b>Discord alerts</b> → new coins with Discord &lt;6hr old\n` +
-      `🔬 <b>Micro cap alerts</b> → fresh launches under <b>$5K</b>\n\n` +
-      `⚡ <i>New coins alert within 1 hour of launch</i>\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━`
+      `✅ <b>PUMP SCANNER ACTIVE</b>\n` +
+      `Alerts working! 🎉\n\n` +
+      `🔴 <b>Live</b> → livestreaming coins <b>&lt;$5K</b> mc\n` +
+      `🟣 <b>Discord</b> → new coins with Discord linked\n` +
+      `📊 Micro cap tracked on web only (no Telegram spam)`
     );
     res.json({ success: true });
   } catch (err) {

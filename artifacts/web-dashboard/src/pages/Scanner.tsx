@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { RefreshCw, Bell, CheckCircle, Video, MessageCircle, TrendingUp, Zap, Microscope } from "lucide-react";
 import { CoinCard } from "@/components/CoinCard";
 import { ChatPanel } from "@/components/ChatPanel";
+import { GroupChatPanel } from "@/components/GroupChatPanel";
 import {
   useLiveCoins,
   useDiscordCoins,
@@ -320,10 +321,14 @@ export default function Scanner() {
           </div>
         </div>
 
-        {/* Chat panel */}
+        {/* Chat / Group Chat panel */}
         {openChat && (
           <div className="w-full lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col border-l border-[#111] bg-[#0a0a0a] overflow-hidden">
-            <ChatPanel coin={openChat} onClose={() => setOpenChat(null)} />
+            {tab === "micro" ? (
+              <GroupChatPanel coin={openChat} onClose={() => setOpenChat(null)} />
+            ) : (
+              <ChatPanel coin={openChat} onClose={() => setOpenChat(null)} />
+            )}
           </div>
         )}
       </div>
