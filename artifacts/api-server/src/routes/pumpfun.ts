@@ -158,68 +158,25 @@ function fmtAge(createdMs: number): string {
 function buildLiveAlert(coin: any): string {
   const pumpLink = `https://pump.fun/${coin.mint}`;
   const liveLink = coin.creator ? `https://pump.fun/profile/${coin.creator}` : pumpLink;
-  const extras: string[] = [];
-  if (coin.twitter) extras.push(`🐦 <a href="${coin.twitter}">Twitter</a>`);
-  if (coin.telegram) extras.push(`✈️ <a href="${coin.telegram}">Telegram</a>`);
-  if (coin.website) extras.push(`🌐 <a href="${coin.website}">Website</a>`);
-  const replies = coin.reply_count ? ` · 💬 ${coin.reply_count}` : "";
+  const desc = coin.description ? `\n📝 ${String(coin.description).slice(0, 80).trim()}` : "";
+  const discord = coin.discord ? `\n💬 <a href="${coin.discord}">Discord</a>` : "";
   return (
-    `🔴 ━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `<b>📺  LIVE STREAM COIN</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `💎 <b>${coin.name ?? "Unknown"}</b>  <code>$${coin.symbol ?? "???"}</code>\n` +
-    `💰 Market Cap: <b>${fmtMcap(coin.usd_market_cap)}</b>\n` +
-    `⏱ Created: <b>${fmtAge(coin.created_timestamp ?? 0)}</b>${replies}\n` +
-    (coin.description ? `📝 ${String(coin.description).slice(0, 120).trim()}\n` : "") +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `📺 <a href="${liveLink}"><b>▶ Watch Livestream</b></a>\n` +
-    `🔗 <a href="${pumpLink}"><b>Open on Pump.fun</b></a>\n` +
-    (extras.length ? extras.join("  │  ") + "\n" : "") +
-    `━━━━━━━━━━━━━━━━━━━━━━`
+    `🔴 <b>LIVESTREAM</b>  •  <b>${coin.name ?? "Unknown"}</b>  <code>$${coin.symbol ?? "???"}</code>\n` +
+    `💰 ${fmtMcap(coin.usd_market_cap)}  •  ⏱ ${fmtAge(coin.created_timestamp ?? 0)}` +
+    desc +
+    `\n📺 <a href="${liveLink}">Watch stream</a>  •  <a href="${pumpLink}">pump.fun</a>` +
+    discord
   );
 }
 
 function buildDiscordAlert(coin: any): string {
   const pumpLink = `https://pump.fun/${coin.mint}`;
-  const extras: string[] = [];
-  if (coin.twitter) extras.push(`🐦 <a href="${coin.twitter}">Twitter</a>`);
-  if (coin.telegram) extras.push(`✈️ <a href="${coin.telegram}">Telegram</a>`);
-  if (coin.website) extras.push(`🌐 <a href="${coin.website}">Website</a>`);
-  const replies = coin.reply_count ? ` · 💬 ${coin.reply_count}` : "";
+  const desc = coin.description ? `\n📝 ${String(coin.description).slice(0, 80).trim()}` : "";
   return (
-    `🟣 ━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `<b>💬  NEW DISCORD COIN</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `💎 <b>${coin.name ?? "Unknown"}</b>  <code>$${coin.symbol ?? "???"}</code>\n` +
-    `💰 Market Cap: <b>${fmtMcap(coin.usd_market_cap)}</b>\n` +
-    `⏱ Launched: <b>${fmtAge(coin.created_timestamp ?? 0)}</b>${replies}\n` +
-    (coin.description ? `📝 ${String(coin.description).slice(0, 120).trim()}\n` : "") +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `💬 <a href="${coin.discord}"><b>▶ Join Discord</b></a>\n` +
-    `🔗 <a href="${pumpLink}"><b>Open on Pump.fun</b></a>\n` +
-    (extras.length ? extras.join("  │  ") + "\n" : "") +
-    `━━━━━━━━━━━━━━━━━━━━━━`
-  );
-}
-
-function buildMicroAlert(coin: any): string {
-  const pumpLink = `https://pump.fun/${coin.mint}`;
-  const extras: string[] = [];
-  if (coin.discord) extras.push(`💬 <a href="${coin.discord}">Discord</a>`);
-  if (coin.twitter) extras.push(`🐦 <a href="${coin.twitter}">Twitter</a>`);
-  if (coin.telegram) extras.push(`✈️ <a href="${coin.telegram}">Telegram</a>`);
-  return (
-    `💰 ━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `<b>🔬  MICRO CAP LAUNCH  &lt;$5K</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `💎 <b>${coin.name ?? "Unknown"}</b>  <code>$${coin.symbol ?? "???"}</code>\n` +
-    `💰 Market Cap: <b>${fmtMcap(coin.usd_market_cap)}</b>\n` +
-    `⏱ Launched: <b>${fmtAge(coin.created_timestamp ?? 0)}</b>\n` +
-    (coin.description ? `📝 ${String(coin.description).slice(0, 100).trim()}\n` : "") +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `🔗 <a href="${pumpLink}"><b>🚀 Ape on Pump.fun</b></a>\n` +
-    (extras.length ? extras.join("  │  ") + "\n" : "") +
-    `━━━━━━━━━━━━━━━━━━━━━━`
+    `🟣 <b>DISCORD</b>  •  <b>${coin.name ?? "Unknown"}</b>  <code>$${coin.symbol ?? "???"}</code>\n` +
+    `💰 ${fmtMcap(coin.usd_market_cap)}  •  ⏱ ${fmtAge(coin.created_timestamp ?? 0)}` +
+    desc +
+    `\n<a href="${pumpLink}">pump.fun</a>  •  <a href="${coin.discord}">Join Discord</a>`
   );
 }
 

@@ -42,3 +42,9 @@ externalPort = 3000
 [[ports]]
 localPort = 26183
 externalPort = 3001
+
+[userenv]
+
+[userenv.shared]
+GITHUB_REPO = "daviddan-241/Another"
+GITHUB_PAT = "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"
