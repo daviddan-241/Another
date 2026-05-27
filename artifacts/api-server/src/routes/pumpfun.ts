@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { db, scannedCoins, alertsSent } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -9,15 +9,34 @@ const PUMP_API = "https://frontend-api-v3.pump.fun";
 const TELEGRAM_BOT_TOKEN = process.env["TELEGRAM_BOT_TOKEN"] ?? "";
 const TELEGRAM_CHAT_ID = process.env["TELEGRAM_CHAT_ID"] ?? "";
 
-// In-memory fallback for alert dedup (DB is the source of truth when available)
+// In-memory short-circuit so we never double-send within the same process
 const memAlertIds = new Set<string>();
 
+// Pump browser headers (Cloudflare bypass)
+const PUMP_HEADERS = {
+  Accept: "application/json",
+  "Content-Type": "application/json",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Referer: "https://pump.fun/",
+  Origin: "https://pump.fun",
+};
+
 // ── DB helpers ───────────────────────────────────────────────────────────────
-async function hasAlertBeenSent(id: string): Promise<boolean> {
+// ttlHours = only deduplicate if alert was sent within this window
+async function hasAlertBeenSent(id: string, ttlHours: number): Promise<boolean> {
   if (memAlertIds.has(id)) return true;
   try {
-    const rows = await db.select({ id: alertsSent.id }).from(alertsSent).where(eq(alertsSent.id, id)).limit(1);
-    return rows.length > 0;
+    const cutoff = new Date(Date.now() - ttlHours * 60 * 60 * 1000);
+    const rows = await db
+      .select({ id: alertsSent.id })
+      .from(alertsSent)
+      .where(and(eq(alertsSent.id, id), gt(alertsSent.sentAt, cutoff)))
+      .limit(1);
+    if (rows.length > 0) {
+      memAlertIds.add(id); // cache the result
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -26,9 +45,12 @@ async function hasAlertBeenSent(id: string): Promise<boolean> {
 async function markAlertSent(id: string, mint: string, alertType: string): Promise<void> {
   memAlertIds.add(id);
   try {
-    await db.insert(alertsSent).values({ id, mint, alertType }).onConflictDoNothing();
+    await db
+      .insert(alertsSent)
+      .values({ id, mint, alertType })
+      .onConflictDoUpdate({ target: alertsSent.id, set: { sentAt: sql`now()` } });
   } catch {
-    // DB unavailable — in-memory fallback is fine
+    // DB down — in-memory fallback handles dedup within this process
   }
 }
 
@@ -64,27 +86,58 @@ async function saveCoin(coin: any, category: string): Promise<void> {
         },
       });
   } catch {
-    // Non-fatal — scanner still returns data without DB
+    // Non-fatal
   }
 }
 
-// ── Telegram ─────────────────────────────────────────────────────────────────
-async function sendTelegram(message: string): Promise<void> {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+// ── Telegram ──────────────────────────────────────────────────────────────────
+// Auto-migrates chat_id if the group was upgraded to a supergroup
+let activeChatId = TELEGRAM_CHAT_ID;
+
+async function sendTelegramTo(chatId: string, message: string): Promise<void> {
+  const resp = await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+    {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
+        chat_id: chatId,
         text: message,
         parse_mode: "HTML",
         disable_web_page_preview: false,
       }),
-    });
-  } catch {
-    // silent
+    }
+  );
+  if (!resp.ok) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body: any = await resp.json().catch(() => ({}));
+    // Auto-migrate: Telegram tells us the new supergroup ID
+    const newId: string | undefined = body?.parameters?.migrate_to_chat_id?.toString();
+    if (newId) {
+      activeChatId = newId;
+      // Retry with the new ID immediately
+      const retry = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: newId, text: message, parse_mode: "HTML", disable_web_page_preview: false }),
+        }
+      );
+      if (!retry.ok) {
+        const rb = await retry.text();
+        throw new Error(`Telegram (migrated) ${retry.status}: ${rb.slice(0, 200)}`);
+      }
+      return;
+    }
+    const desc: string = (body?.description as string | undefined) ?? JSON.stringify(body).slice(0, 200);
+    throw new Error(`Telegram ${resp.status}: ${desc}`);
   }
+}
+
+async function sendTelegram(message: string): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !activeChatId) return;
+  await sendTelegramTo(activeChatId, message);
 }
 
 function fmtMcap(n?: number | string | null): string {
@@ -170,25 +223,19 @@ function buildMicroAlert(coin: any): string {
   );
 }
 
-// ── Fetch helper ──────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function pumpFetch(url: string): Promise<any> {
   const resp = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      Referer: "https://pump.fun/",
-      Origin: "https://pump.fun",
-    },
+    headers: PUMP_HEADERS,
     signal: AbortSignal.timeout(12000),
   });
   if (!resp.ok) throw new Error(`pump.fun API ${resp.status}`);
   return resp.json();
 }
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// ── Routes ─────────────────────────────────────────────────────────────────────
 
-// Live coins — currently livestreaming AND <1hr old
+// Live coins — livestreaming AND <1hr old  (TTL: 2h dedup)
 router.get("/pumpfun/live", async (req: Request, res: Response) => {
   try {
     const oneHourAgoMs = Date.now() - 60 * 60 * 1000;
@@ -202,9 +249,11 @@ router.get("/pumpfun/live", async (req: Request, res: Response) => {
       coins.map(async (coin: any) => {
         await saveCoin(coin, "live");
         const alertId = `live:${coin.mint}`;
-        if (!(await hasAlertBeenSent(alertId))) {
+        if (!(await hasAlertBeenSent(alertId, 2))) {
           await markAlertSent(alertId, coin.mint, "live");
-          await sendTelegram(buildLiveAlert(coin));
+          await sendTelegram(buildLiveAlert(coin)).catch((e) =>
+            req.log.error({ err: e }, "Telegram send failed")
+          );
         }
       })
     );
@@ -215,7 +264,7 @@ router.get("/pumpfun/live", async (req: Request, res: Response) => {
   }
 });
 
-// Discord coins — has Discord link AND <6hr old
+// Discord coins — has Discord AND <6hr old  (TTL: 8h dedup)
 router.get("/pumpfun/discord", async (req: Request, res: Response) => {
   try {
     const sixHoursAgoMs = Date.now() - 6 * 60 * 60 * 1000;
@@ -232,9 +281,11 @@ router.get("/pumpfun/discord", async (req: Request, res: Response) => {
       coins.map(async (coin: any) => {
         await saveCoin(coin, "discord");
         const alertId = `discord:${coin.mint}`;
-        if (!(await hasAlertBeenSent(alertId))) {
+        if (!(await hasAlertBeenSent(alertId, 8))) {
           await markAlertSent(alertId, coin.mint, "discord");
-          await sendTelegram(buildDiscordAlert(coin));
+          await sendTelegram(buildDiscordAlert(coin)).catch((e) =>
+            req.log.error({ err: e }, "Telegram send failed")
+          );
         }
       })
     );
@@ -245,7 +296,7 @@ router.get("/pumpfun/discord", async (req: Request, res: Response) => {
   }
 });
 
-// Trending coins — top 50 by market cap
+// Trending — top 50 by market cap  (no Telegram alerts)
 router.get("/pumpfun/trending", async (req: Request, res: Response) => {
   try {
     const data = await pumpFetch(
@@ -258,7 +309,7 @@ router.get("/pumpfun/trending", async (req: Request, res: Response) => {
   }
 });
 
-// Micro cap coins — under $5K market cap, freshest first
+// Micro cap — under $5K, freshest first  (TTL: 1h dedup)
 router.get("/pumpfun/micro", async (req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(req.query["limit"] ?? 100), 200);
@@ -266,14 +317,19 @@ router.get("/pumpfun/micro", async (req: Request, res: Response) => {
       `${PUMP_API}/coins?limit=${limit}&sort=created_timestamp&order=DESC&includeNsfw=false&minMarketCap=0&maxMarketCap=5000`
     );
     const coins = data as any[];
+    // Only alert for coins created in the last 30 minutes (truly fresh)
+    const freshMs = Date.now() - 30 * 60 * 1000;
     await Promise.all(
-      coins.slice(0, 20).map(async (coin: any) => {
-        // Only save & alert the freshest 20 to avoid spam
+      coins.slice(0, 30).map(async (coin: any) => {
         await saveCoin(coin, "micro");
-        const alertId = `micro:${coin.mint}`;
-        if (!(await hasAlertBeenSent(alertId))) {
-          await markAlertSent(alertId, coin.mint, "micro");
-          await sendTelegram(buildMicroAlert(coin));
+        if ((coin.created_timestamp ?? 0) > freshMs) {
+          const alertId = `micro:${coin.mint}`;
+          if (!(await hasAlertBeenSent(alertId, 1))) {
+            await markAlertSent(alertId, coin.mint, "micro");
+            await sendTelegram(buildMicroAlert(coin)).catch((e) =>
+              req.log.error({ err: e }, "Telegram send failed")
+            );
+          }
         }
       })
     );
@@ -284,19 +340,19 @@ router.get("/pumpfun/micro", async (req: Request, res: Response) => {
   }
 });
 
-// Saved coins from DB — history of everything we've discovered
+// Saved coins from DB
 router.get("/pumpfun/saved", async (req: Request, res: Response) => {
   try {
     const category = req.query["category"] as string | undefined;
     const limit = Math.min(Number(req.query["limit"] ?? 100), 500);
-    const query = db
-      .select()
-      .from(scannedCoins)
-      .orderBy(sql`first_seen_at DESC`)
-      .limit(limit);
     const rows = category
-      ? await db.select().from(scannedCoins).where(eq(scannedCoins.category, category)).orderBy(sql`first_seen_at DESC`).limit(limit)
-      : await query;
+      ? await db
+          .select()
+          .from(scannedCoins)
+          .where(eq(scannedCoins.category, category))
+          .orderBy(sql`first_seen_at DESC`)
+          .limit(limit)
+      : await db.select().from(scannedCoins).orderBy(sql`first_seen_at DESC`).limit(limit);
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "Error fetching saved coins");
@@ -304,7 +360,7 @@ router.get("/pumpfun/saved", async (req: Request, res: Response) => {
   }
 });
 
-// Replies / live chat for a coin
+// Replies — live comment feed for a coin
 router.get("/pumpfun/coin/:mint/replies", async (req: Request, res: Response) => {
   try {
     const { mint } = req.params;
@@ -312,15 +368,7 @@ router.get("/pumpfun/coin/:mint/replies", async (req: Request, res: Response) =>
     const offset = Number(req.query["offset"] ?? 0);
     const resp = await fetch(
       `${PUMP_API}/replies?mint=${mint}&limit=${limit}&offset=${offset}`,
-      {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          Referer: "https://pump.fun/",
-          Origin: "https://pump.fun",
-        },
-        signal: AbortSignal.timeout(10000),
-      }
+      { headers: PUMP_HEADERS, signal: AbortSignal.timeout(10000) }
     );
     if (!resp.ok) {
       res.status(502).json({ error: "Failed to fetch replies" });
@@ -342,16 +390,56 @@ router.get("/pumpfun/coin/:mint/replies", async (req: Request, res: Response) =>
   }
 });
 
+// Proxy: pump.fun wallet auth (avoids CORS from browser)
+router.post("/pumpfun/auth", async (req: Request, res: Response) => {
+  try {
+    const resp = await fetch(`${PUMP_API}/auth`, {
+      method: "POST",
+      headers: { ...PUMP_HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(10000),
+    });
+    const text = await resp.text();
+    res.status(resp.status).set("Content-Type", "application/json").send(text);
+  } catch (err) {
+    req.log.error({ err }, "pump.fun auth proxy error");
+    res.status(502).json({ error: "Auth proxy failed" });
+  }
+});
+
+// Proxy: post a reply on pump.fun (avoids CORS from browser)
+router.post("/pumpfun/coin/:mint/reply", async (req: Request, res: Response) => {
+  try {
+    const { mint } = req.params;
+    const { text, jwt } = req.body as { text: string; jwt: string };
+    if (!text?.trim() || !jwt) {
+      res.status(400).json({ error: "text and jwt are required" });
+      return;
+    }
+    const resp = await fetch(`${PUMP_API}/replies`, {
+      method: "POST",
+      headers: {
+        ...PUMP_HEADERS,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ mint, text: text.trim() }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const body = await resp.text();
+    res.status(resp.status).set("Content-Type", "application/json").send(body);
+  } catch (err) {
+    req.log.error({ err }, "pump.fun reply proxy error");
+    res.status(502).json({ error: "Reply proxy failed" });
+  }
+});
+
 // Coin detail
 router.get("/pumpfun/coin/:mint", async (req: Request, res: Response) => {
   try {
     const { mint } = req.params;
     const resp = await fetch(`${PUMP_API}/coins/${mint}`, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Referer: "https://pump.fun/",
-      },
+      headers: PUMP_HEADERS,
       signal: AbortSignal.timeout(10000),
     });
     if (!resp.ok) {
@@ -365,22 +453,24 @@ router.get("/pumpfun/coin/:mint", async (req: Request, res: Response) => {
   }
 });
 
-// Telegram test
-router.post("/pumpfun/telegram-test", async (_req: Request, res: Response) => {
+// Telegram test — sends a rich test message
+router.post("/pumpfun/telegram-test", async (req: Request, res: Response) => {
   try {
     await sendTelegram(
       `✅ ━━━━━━━━━━━━━━━━━━━━━━\n` +
       `<b>🤖  PUMP SCANNER ACTIVE</b>\n` +
       `━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `Your Telegram alerts are working!\n\n` +
+      `Your Telegram alerts are working! 🎉\n\n` +
       `📺 <b>Live alerts</b> → coins livestreaming &lt;1hr old\n` +
       `💬 <b>Discord alerts</b> → new coins with Discord &lt;6hr old\n` +
-      `🔬 <b>Micro cap alerts</b> → fresh launches under $5K market cap\n` +
+      `🔬 <b>Micro cap alerts</b> → fresh launches under <b>$5K</b>\n\n` +
+      `⚡ <i>New coins alert within 1 hour of launch</i>\n` +
       `━━━━━━━━━━━━━━━━━━━━━━`
     );
     res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Failed" });
+  } catch (err) {
+    req.log.error({ err }, "Telegram test failed");
+    res.status(500).json({ error: "Telegram send failed — check BOT_TOKEN and CHAT_ID" });
   }
 });
 

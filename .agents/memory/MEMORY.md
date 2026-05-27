@@ -1,0 +1,2 @@
+- [Telegram supergroup migration](telegram-migration.md) — group→supergroup breaks chat_id; server auto-migrates via migrate_to_chat_id error response
+- [Solana wallet adapter in Vite](solana-vite-polyfills.md) — requires vite-plugin-node-polyfills for buffer/crypto/stream in browser
