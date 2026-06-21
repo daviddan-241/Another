@@ -122,6 +122,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     lockOnNew: boolean;
     devMode: boolean;
     telegramOnDev: boolean;
+    telegramOnTGDev: boolean;
     buyRequireApproval: boolean;
     watchAfterStreamEnd: boolean;
     buyAmountSol: number;
@@ -139,17 +140,27 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
       streamEndedAt: number | null; awaitingApproval: boolean; roomLocked: boolean;
     }>;
     approvalPending: Array<{ mint: string; chatId: string; messageId: number }>;
+    // Contact info for multi-turn conversation
+    tgUsername: string;
+    xUsername: string;
+    discordUsername: string;
+    // Ollama AI settings
+    ollamaEnabled: boolean;
+    ollamaUrl: string;
+    ollamaModel: string;
   }>({
     enabled: false, dryRun: false, humanize: true, language: "auto",
     persona: "texas",
     customDrops: [], customDelaysMs: [], customDevReply: "",
-    lockOnNew: true, devMode: true, telegramOnDev: true,
+    lockOnNew: true, devMode: true, telegramOnDev: true, telegramOnTGDev: true,
     buyRequireApproval: true, watchAfterStreamEnd: true,
     buyAmountSol: 0.02, minMc: 0, maxPerCoin: 3, maxConcurrentChats: 5,
     hasOperatorKey: false, operatorPubkey: "",
     operatorSolBalance: null, configPath: "",
     personas: [],
     active: [], approvalPending: [],
+    tgUsername: "", xUsername: "", discordUsername: "",
+    ollamaEnabled: true, ollamaUrl: "http://127.0.0.1:11434", ollamaModel: "llama3",
   });
   const [autoChatLoading, setAutoChatLoading] = useState(false);
   const [autoChatMsg, setAutoChatMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -194,6 +205,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
           lockOnNew:             cfg.lockOnNew             ?? prev.lockOnNew,
           devMode:               cfg.devMode               ?? prev.devMode,
           telegramOnDev:         cfg.telegramOnDev         ?? prev.telegramOnDev,
+          telegramOnTGDev:       cfg.telegramOnTGDev       ?? prev.telegramOnTGDev,
           buyRequireApproval:    cfg.buyRequireApproval    ?? prev.buyRequireApproval,
           watchAfterStreamEnd:   cfg.watchAfterStreamEnd   ?? prev.watchAfterStreamEnd,
           buyAmountSol:          cfg.buyAmountSol          ?? prev.buyAmountSol,
@@ -207,6 +219,12 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
           personas:              Array.isArray(cfg.personas) ? cfg.personas : prev.personas,
           active:                Array.isArray(cfg.active) ? cfg.active : prev.active,
           approvalPending:       Array.isArray(cfg.approvalPending) ? cfg.approvalPending : prev.approvalPending,
+          tgUsername:            typeof cfg.tgUsername === "string" ? cfg.tgUsername : prev.tgUsername,
+          xUsername:             typeof cfg.xUsername === "string" ? cfg.xUsername : prev.xUsername,
+          discordUsername:       typeof cfg.discordUsername === "string" ? cfg.discordUsername : prev.discordUsername,
+          ollamaEnabled:         cfg.ollamaEnabled ?? prev.ollamaEnabled,
+          ollamaUrl:             typeof cfg.ollamaUrl === "string" ? cfg.ollamaUrl : prev.ollamaUrl,
+          ollamaModel:           typeof cfg.ollamaModel === "string" ? cfg.ollamaModel : prev.ollamaModel,
         }));
       }
     } catch { /* swallow */ }
@@ -236,6 +254,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
           lockOnNew:             autoChat.lockOnNew,
           devMode:               autoChat.devMode,
           telegramOnDev:         autoChat.telegramOnDev,
+          telegramOnTGDev:       autoChat.telegramOnTGDev,
           buyRequireApproval:    autoChat.buyRequireApproval,
           watchAfterStreamEnd:   autoChat.watchAfterStreamEnd,
           buyAmountSol:          autoChat.buyAmountSol,
@@ -243,6 +262,12 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
           maxPerCoin:            autoChat.maxPerCoin,
           maxConcurrentChats:    autoChat.maxConcurrentChats,
           operatorPrivateKey:    privateKey.trim() || undefined,
+          tgUsername:            autoChat.tgUsername,
+          xUsername:             autoChat.xUsername,
+          discordUsername:       autoChat.discordUsername,
+          ollamaEnabled:         autoChat.ollamaEnabled,
+          ollamaUrl:             autoChat.ollamaUrl,
+          ollamaModel:           autoChat.ollamaModel,
         }),
         signal: ctrl.signal,
       });
@@ -1040,6 +1065,92 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
+          {/* ── Contact Info for Multi-Turn Conversation ───────────────────────── */}
+          <div style={{ borderRadius: 12, padding: "12px 14px", marginBottom: 12, background: "rgba(139,92,246,0.06)", border: "1.5px solid rgba(139,92,246,0.25)" }}>
+            <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>
+              📇 Your Contact Info (bot gives this to devs)
+            </div>
+            <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", lineHeight: 1.6, marginBottom: 10 }}>
+              The bot shares these with coin devs during conversation — no @ symbols needed on pump.fun.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div>
+                <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 4 }}>📱 Telegram username</div>
+                <input
+                  type="text"
+                  placeholder="TradeSignals"
+                  value={autoChat.tgUsername}
+                  onChange={(e) => { setAutoChat(p => ({ ...p, tgUsername: e.target.value })); setAutoChatDirty(true); }}
+                  style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#f1f5f9", background: "#080c14", border: "1.5px solid #1a2840", outline: "none" }}
+                />
+              </div>
+              <div>
+                <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 4 }}>✖ X (Twitter) username</div>
+                <input
+                  type="text"
+                  placeholder="TradeSignals"
+                  value={autoChat.xUsername}
+                  onChange={(e) => { setAutoChat(p => ({ ...p, xUsername: e.target.value })); setAutoChatDirty(true); }}
+                  style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#f1f5f9", background: "#080c14", border: "1.5px solid #1a2840", outline: "none" }}
+                />
+              </div>
+              <div>
+                <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 4 }}>🎮 Discord username</div>
+                <input
+                  type="text"
+                  placeholder="TradeSignals"
+                  value={autoChat.discordUsername}
+                  onChange={(e) => { setAutoChat(p => ({ ...p, discordUsername: e.target.value })); setAutoChatDirty(true); }}
+                  style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#f1f5f9", background: "#080c14", border: "1.5px solid #1a2840", outline: "none" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Ollama AI Settings ────────────────────────────────────────── */}
+          <div style={{ borderRadius: 12, padding: "12px 14px", marginBottom: 12, background: autoChat.ollamaEnabled ? "rgba(34,197,94,0.05)" : "rgba(255,255,255,0.02)", border: `1.5px solid ${autoChat.ollamaEnabled ? "rgba(34,197,94,0.2)" : "#1a2840"}` }}>
+            <div
+              onClick={() => { setAutoChat(p => ({ ...p, ollamaEnabled: !p.ollamaEnabled })); setAutoChatDirty(true); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", WebkitTapHighlightColor: "transparent", marginBottom: 10 }}
+            >
+              <div style={{ width: 40, height: 24, borderRadius: 12, position: "relative", background: autoChat.ollamaEnabled ? "#22c55e" : "#1a2840", flexShrink: 0 }}>
+                <div style={{ position: "absolute", top: 3, left: autoChat.ollamaEnabled ? 19 : 3, width: 18, height: 18, borderRadius: "50%", background: "white", transition: "left 0.2s" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: autoChat.ollamaEnabled ? "#4ade80" : "#f1f5f9" }}>
+                  🧠 Use Ollama AI for smart responses
+                </div>
+                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", lineHeight: 1.5 }}>
+                  Free local AI (llama3, mistral, etc.) — falls back to templates if offline.
+                </div>
+              </div>
+            </div>
+            {autoChat.ollamaEnabled && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 4 }}>🔗 Ollama URL</div>
+                  <input
+                    type="text"
+                    placeholder="http://127.0.0.1:11434"
+                    value={autoChat.ollamaUrl}
+                    onChange={(e) => { setAutoChat(p => ({ ...p, ollamaUrl: e.target.value })); setAutoChatDirty(true); }}
+                    style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#f1f5f9", background: "#080c14", border: "1.5px solid #1a2840", outline: "none" }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 4 }}>🤖 Model</div>
+                  <input
+                    type="text"
+                    placeholder="llama3"
+                    value={autoChat.ollamaModel}
+                    onChange={(e) => { setAutoChat(p => ({ ...p, ollamaModel: e.target.value })); setAutoChatDirty(true); }}
+                    style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#f1f5f9", background: "#080c14", border: "1.5px solid #1a2840", outline: "none" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Toggles */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
             <Toggle
@@ -1059,6 +1170,12 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               onChange={(v) => { setAutoChat(p => ({ ...p, telegramOnDev: v })); setAutoChatDirty(true); }}
               label="📲 Ping me on Telegram when dev replies"
               hint="Get a Telegram DM the moment the coin dev posts in any tracked chat."
+            />
+            <Toggle
+              on={autoChat.telegramOnTGDev}
+              onChange={(v) => { setAutoChat(p => ({ ...p, telegramOnTGDev: v })); setAutoChatDirty(true); }}
+              label="💬 Alert me when dev confirms messaging"
+              hint="Get a Telegram DM when the dev confirms they messaged you OR gives contact info. Includes full conversation + coin details."
             />
             <Toggle
               on={autoChat.buyRequireApproval}

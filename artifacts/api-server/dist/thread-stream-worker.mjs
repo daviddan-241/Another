@@ -20,9 +20,9 @@ var __commonJS = (cb, mod) => function __require2() {
   }
 };
 
-// node_modules/real-require/src/index.js
+// ../../node_modules/real-require/src/index.js
 var require_src = __commonJS({
-  "node_modules/real-require/src/index.js"(exports, module) {
+  "../../node_modules/real-require/src/index.js"(exports, module) {
     var realImport2 = new Function("modulePath", "return import(modulePath)");
     function realRequire2(modulePath) {
       if (typeof __non_webpack__require__ === "function") {
@@ -34,9 +34,9 @@ var require_src = __commonJS({
   }
 });
 
-// node_modules/thread-stream/lib/indexes.js
+// ../../node_modules/thread-stream/lib/indexes.js
 var require_indexes = __commonJS({
-  "node_modules/thread-stream/lib/indexes.js"(exports, module) {
+  "../../node_modules/thread-stream/lib/indexes.js"(exports, module) {
     "use strict";
     var SEQ_INDEX2 = 2;
     var WRITE_INDEX2 = 4;
@@ -49,9 +49,9 @@ var require_indexes = __commonJS({
   }
 });
 
-// node_modules/thread-stream/lib/wait.js
+// ../../node_modules/thread-stream/lib/wait.js
 var require_wait = __commonJS({
-  "node_modules/thread-stream/lib/wait.js"(exports, module) {
+  "../../node_modules/thread-stream/lib/wait.js"(exports, module) {
     "use strict";
     var MAX_TIMEOUT = 1e3;
     function wait(state2, index, expected, timeout, done) {
@@ -107,7 +107,7 @@ var require_wait = __commonJS({
   }
 });
 
-// node_modules/thread-stream/lib/worker.js
+// ../../node_modules/thread-stream/lib/worker.js
 var { realImport, realRequire } = require_src();
 var { workerData, parentPort } = __require("worker_threads");
 var { WRITE_INDEX, READ_INDEX, SEQ_INDEX } = require_indexes();
