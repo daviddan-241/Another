@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Pump.fun Scanner"
+version = "1.0.0"
+id = "artifacts/pump-scanner"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 8000
+
+[services.development]
+run = "pnpm --filter @workspace/pump-scanner run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pump-scanner", "run", "build" ]
+publicDir = "artifacts/pump-scanner/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "8000"
+BASE_PATH = "/"

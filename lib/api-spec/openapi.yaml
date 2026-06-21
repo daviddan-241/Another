@@ -1,0 +1,239 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Pump.fun coin scanner API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: coins
+    description: Coin scanning and filtering
+  - name: scanner
+    description: Scanner control
+  - name: dev
+    description: Developer wallet stats
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /coins:
+    get:
+      operationId: getCoins
+      tags: [coins]
+      summary: Get all scanned coins
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, livestream, discord]
+          description: Filter by type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of coins
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  coins:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Coin"
+                  total:
+                    type: integer
+                required: [coins, total]
+  /coins/stats:
+    get:
+      operationId: getCoinStats
+      tags: [coins]
+      summary: Get scanner statistics
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannerStats"
+  /scanner/status:
+    get:
+      operationId: getScannerStatus
+      tags: [scanner]
+      summary: Get scanner running status
+      responses:
+        "200":
+          description: Scanner status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannerStatus"
+  /scanner/start:
+    post:
+      operationId: startScanner
+      tags: [scanner]
+      summary: Start the scanner
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannerStatus"
+  /scanner/stop:
+    post:
+      operationId: stopScanner
+      tags: [scanner]
+      summary: Stop the scanner
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannerStatus"
+  /dev/{wallet}:
+    get:
+      operationId: getDevProfile
+      tags: [dev]
+      summary: Get dev wallet stats
+      parameters:
+        - name: wallet
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dev profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DevProfile"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+    Coin:
+      type: object
+      properties:
+        mint:
+          type: string
+        name:
+          type: string
+        symbol:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+        marketCap:
+          type: number
+        createdAt:
+          type: string
+        ageMinutes:
+          type: number
+        hasLivestream:
+          type: boolean
+        hasDiscord:
+          type: boolean
+        discordUrl:
+          type: string
+        livestreamUrl:
+          type: string
+        pumpUrl:
+          type: string
+        chatUrl:
+          type: string
+        seenAt:
+          type: string
+        type:
+          type: string
+          enum: [livestream, discord]
+        creator:
+          type: string
+        replyCount:
+          type: integer
+        platform:
+          type: string
+      required:
+        - mint
+        - name
+        - symbol
+        - marketCap
+        - createdAt
+        - ageMinutes
+        - hasLivestream
+        - hasDiscord
+        - pumpUrl
+        - seenAt
+        - type
+    DevProfile:
+      type: object
+      properties:
+        wallet:
+          type: string
+        coinsCreated:
+          type: integer
+        solBalance:
+          type: number
+        recentCoins:
+          type: array
+          items:
+            type: object
+            properties:
+              mint:
+                type: string
+              name:
+                type: string
+              symbol:
+                type: string
+              marketCap:
+                type: number
+              createdAt:
+                type: string
+            required: [mint, name, symbol]
+      required: [wallet, coinsCreated, solBalance]
+    ScannerStats:
+      type: object
+      properties:
+        totalScanned:
+          type: integer
+        livestreamCoins:
+          type: integer
+        discordCoins:
+          type: integer
+        under5kMc:
+          type: integer
+        lastScanAt:
+          type: string
+      required: [totalScanned, livestreamCoins, discordCoins, under5kMc]
+    ScannerStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+        message:
+          type: string
+      required: [running, message]

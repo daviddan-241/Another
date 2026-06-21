@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: pumpradar
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: "corepack enable pnpm || npm install -g pnpm@latest && pnpm install --no-frozen-lockfile && npx tsc --build lib/api-client-react lib/api-zod lib/db && BASE_PATH=/ pnpm --filter @workspace/pump-scanner run build && pnpm --filter @workspace/api-server run build"
+    startCommand: "PORT=10000 node --enable-source-maps artifacts/api-server/dist/index.mjs"
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: NODE_VERSION
+        value: "20"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: PRIVATE_KEY
+        sync: false
+      - key: BIRDEYE_API_KEY
+        sync: false

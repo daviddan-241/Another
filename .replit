@@ -1,0 +1,83 @@
+modules = ["nodejs-20", "web", "python-3.12"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Pump Scanner"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Backend"
+
+[[workflows.workflow]]
+name = "Pump Scanner"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm install --frozen-lockfile && pnpm --filter @workspace/pump-scanner run dev"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Start Backend"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build && PORT=8080 node --enable-source-maps artifacts/api-server/dist/index.mjs"
+waitForPort = 8080
+
+[agent]
+stack = "BEST_EFFORT_FALLBACK"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8082
+externalPort = 3002
+
+[[ports]]
+localPort = 22559
+externalPort = 3000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BHGgFyJjERaQuTAKyLYvXhaQPtPlYSUmKGTQrNrSpLLBDgLd0vSRZO_SThd37zp9DpEh5yrFpToZK-ZwaVTKXp4"
+VAPID_PRIVATE_KEY = "Vi2lm-wPp1KTq4N0laIMsW2xgNA388Ys7QawFpgq5zU"
+VAPID_EMAIL = "mailto:admin@pumpradar.app"

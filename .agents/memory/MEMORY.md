@@ -1,0 +1,3 @@
+- [GitHub push approach](github-push.md) — git commit is blocked in main agent; use the API script at scripts/push_to_github.mjs with GITHUB_PERSONAL_ACCESS_TOKEN
+- [Telegram token whitespace](telegram-token.md) — the TELEGRAM_BOT_TOKEN secret was saved with a leading space; always .trim() bot tokens and chat IDs
+- [pump.fun API](pumpfun-api.md) — working endpoint is frontend-api-v3.pump.fun with browser-like headers; pumpportal WS for real-time events

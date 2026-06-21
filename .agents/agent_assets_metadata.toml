@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "kNkW3j54HUwm8y78kkI9K"
+uri = "file://artifacts/pump-scanner/public/icon-512.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sj7raXks7B645Usor9aC9"
+uri = "file://artifacts/pump-scanner/public/icon-192.png"
+type = "image"
+title = "generated_image"
