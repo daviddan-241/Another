@@ -7,7 +7,10 @@
     "build:render": "BASE_PATH=/ pnpm --filter @workspace/pump-scanner run build && pnpm --filter @workspace/api-server run build",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "dev": "node artifacts/api-server/dist/index.mjs &",
+    "start": "echo \"Run: node artifacts/api-server/dist/index.mjs\"",
+    "build:all": "node artifacts/api-server/build.mjs && vite build --config artifacts/pump-scanner/vite.config.ts"
   },
   "private": true,
   "devDependencies": {

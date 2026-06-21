@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: "corepack enable pnpm || npm install -g pnpm@latest && pnpm install --no-frozen-lockfile && npx tsc --build lib/api-client-react lib/api-zod lib/db && BASE_PATH=/ pnpm --filter @workspace/pump-scanner run build && pnpm --filter @workspace/api-server run build"
+    buildCommand: "corepack enable pnpm 2>/dev/null || npm install -g pnpm@latest; pnpm install --no-frozen-lockfile 2>/dev/null || npm install --no-package-lock; npx tsc --build 2>/dev/null; node artifacts/api-server/build.mjs && vite build --config artifacts/pump-scanner/vite.config.ts"
     startCommand: "PORT=10000 node --enable-source-maps artifacts/api-server/dist/index.mjs"
     healthCheckPath: /api/healthz
     envVars:
@@ -18,7 +18,12 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
-      - key: PRIVATE_KEY
+      - key: OLLAMA_ENABLED
+        value: "false"
         sync: false
-      - key: BIRDEYE_API_KEY
+      - key: OLLAMA_URL
+        value: "http://localhost:11434"
+        sync: false
+      - key: OLLAMA_MODEL
+        value: "llama3.2:3b"
         sync: false
