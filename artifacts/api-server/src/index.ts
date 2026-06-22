@@ -7,17 +7,9 @@ import { sendCoinAlert } from "./lib/telegram";
 import { initChatRooms } from "./lib/chatrooms";
 import { startAutoChat } from "./lib/autoChat";
 
-// Telegram filter: ONLY alert on Discord coins. Never on livestream coins.
-// Per user requirement: "only the discord coins get sent to my telegram, no live coin again"
-function telegramDiscordOnly(coin: ScannedCoin): void {
-  if (coin.hasLivestream) {
-    logger.debug({ mint: coin.mint, name: coin.name }, "Skip Telegram (livestream coin)");
-    return;
-  }
-  if (!coin.hasDiscord || !coin.discordUrl) {
-    logger.debug({ mint: coin.mint, name: coin.name }, "Skip Telegram (no Discord link)");
-    return;
-  }
+// Send every new coin to Telegram — Discord + Livestream alike.
+// Dev wallet is included in every alert so the user can track devs non-stop.
+function telegramAllCoins(coin: ScannedCoin): void {
   void sendCoinAlert(coin);
 }
 
@@ -38,7 +30,7 @@ const server = http.createServer(app);
 initWebSocket(server);
 initChatRooms(server);
 
-onNewCoin(telegramDiscordOnly);
+onNewCoin(telegramAllCoins);
 onNewCoinWs(broadcastCoin);
 onStreamEnded(broadcastStreamEnded);
 

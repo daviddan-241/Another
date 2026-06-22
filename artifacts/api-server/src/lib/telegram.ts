@@ -61,10 +61,18 @@ function buildMessage(coin: ScannedCoin): string {
     ? `\n💬 <a href="${coin.discordUrl}">Discord →</a>`
     : "";
 
+  const devLine = coin.creator
+    ? `\n👤 Dev: <code>${coin.creator}</code>`
+    : "";
+
+  const devBubbleLink = coin.creator
+    ? `\n🔍 <a href="https://pump.fun/profile/${coin.creator}">Dev wallet →</a>`
+    : "";
+
   return (
     `${typeIcon} <b>${coin.name}</b> <code>$${coin.symbol}</code>\n` +
-    `${isLive ? "LIVESTREAM" : "DISCORD"}  ·  MC: <b>${formatMC(coin.marketCap)}</b>  ·  Age: <b>${formatAge(coin.ageMinutes)}</b>\n` +
-    `📡 ${platformLabel}${discordLine}\n\n` +
+    `${isLive ? "🔴 LIVESTREAM" : "💬 DISCORD"}  ·  MC: <b>${formatMC(coin.marketCap)}</b>  ·  Age: <b>${formatAge(coin.ageMinutes)}</b>\n` +
+    `📡 ${platformLabel}${discordLine}${devLine}${devBubbleLink}\n\n` +
     `<a href="${coin.pumpUrl}">${platformEmoji} Open on ${platformLabel}</a>`
   );
 }
@@ -78,15 +86,6 @@ async function sendToChat(chatId: string, text: string): Promise<void> {
 }
 
 export async function sendCoinAlert(coin: ScannedCoin): Promise<void> {
-  // Hard filter: Discord coins only. NEVER alert on livestream coins.
-  if (coin.hasLivestream) {
-    logger.debug({ mint: coin.mint }, "sendCoinAlert refused (livestream coin)");
-    return;
-  }
-  if (!coin.hasDiscord || !coin.discordUrl) {
-    logger.debug({ mint: coin.mint }, "sendCoinAlert refused (no Discord link)");
-    return;
-  }
   if (!BOT_TOKEN) {
     logger.warn("Telegram not configured — set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID");
     return;
@@ -101,7 +100,7 @@ export async function sendCoinAlert(coin: ScannedCoin): Promise<void> {
   for (const chatId of registeredChatIds) {
     try {
       await sendToChat(chatId, message);
-      logger.info({ mint: coin.mint, symbol: coin.symbol, chatId }, "Telegram alert sent");
+      logger.info({ mint: coin.mint, symbol: coin.symbol, chatId, type: coin.hasLivestream ? "livestream" : "discord" }, "Telegram alert sent");
     } catch (err) {
       const axErr = err as { response?: { status?: number; data?: unknown }; message?: string };
       logger.error(

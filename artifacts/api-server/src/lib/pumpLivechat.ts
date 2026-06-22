@@ -29,8 +29,6 @@
  * this to push messages to connected browser clients.
  */
 import { io, type Socket } from "socket.io-client";
-import bs58 from "bs58";
-import { Keypair } from "@solana/web3.js";
 import { logger } from "./logger";
 import { getPrivyTokens } from "../routes/auth";
 
@@ -216,25 +214,8 @@ export async function fetchHistory(privateKey: string, mint: string): Promise<Li
   });
 }
 
-/** Post a message to pump.fun's real livechat. Returns the server ack.
- *  In DRY RUN mode, returns a fake ack without opening any socket. */
+/** Post a message to pump.fun's real livechat. Returns the server ack. */
 export async function sendMessage(privateKey: string, mint: string, text: string): Promise<{ ok: boolean; id?: string; error?: string }> {
-  const { isDryRun } = await import("./jupiterSwap") as { isDryRun: () => boolean };
-  if (isDryRun()) {
-    const fakeId = `dryrun_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    logger.info({ mint, textLen: text.length, id: fakeId }, "[DRY RUN] Would post to real pump.fun");
-    const fakeMsg: LivechatMessage = {
-      id: fakeId,
-      roomId: mint,
-      message: text,
-      username: "DRYRUN",
-      address: Keypair.fromSecretKey(bs58.decode(privateKey.trim())).publicKey.toBase58(),
-      timestamp: Date.now(),
-    };
-    fireListeners(mint, fakeMsg);
-    return { ok: true, id: fakeId };
-  }
-  // (continue to real implementation below)
   const entry = await openRoom(privateKey, mint);
   return new Promise<{ ok: boolean; id?: string; error?: string }>((resolve) => {
     const t = setTimeout(() => resolve({ ok: false, error: "pump.fun sendMessage ack timeout" }), 8_000);

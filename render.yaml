@@ -1,29 +1,24 @@
 services:
   - type: web
     name: pumpradar
-    env: node
+    env: docker
     region: oregon
     plan: free
-    buildCommand: "corepack enable pnpm 2>/dev/null || npm install -g pnpm@latest; pnpm install --no-frozen-lockfile 2>/dev/null || npm install --no-package-lock; npx tsc --build 2>/dev/null; node artifacts/api-server/build.mjs && vite build --config artifacts/pump-scanner/vite.config.ts"
-    startCommand: "PORT=10000 node --enable-source-maps artifacts/api-server/dist/index.mjs"
     healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "10000"
-      - key: NODE_VERSION
-        value: "20"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
-      - key: OLLAMA_ENABLED
-        value: "false"
+      - key: PRIVATE_KEY
         sync: false
-      - key: OLLAMA_URL
-        value: "http://localhost:11434"
+      - key: VAPID_PUBLIC_KEY
         sync: false
-      - key: OLLAMA_MODEL
-        value: "llama3.2:3b"
+      - key: VAPID_PRIVATE_KEY
         sync: false
+      - key: VAPID_EMAIL
+        value: "mailto:admin@pumpradar.app"
