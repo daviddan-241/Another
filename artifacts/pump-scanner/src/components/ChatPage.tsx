@@ -14,6 +14,7 @@
 import React, {
   useState, useEffect, useRef, useCallback, useMemo,
 } from "react";
+
 import {
   ArrowLeft, Send, RefreshCw,
   MessageSquare, ExternalLink,
@@ -250,7 +251,7 @@ export function ChatPage({ mint, symbol, name, creator, onClose }: ChatPageProps
   const hasKey = !!privateKey?.trim();
 
   const [tab, setTab]             = useState<Tab>("chat");
-  const [myPubkey, setMyPubkey]   = useState("");
+  const myPubkey = useMemo(() => hasKey ? getPubkeyFromKey(privateKey) : "", [privateKey, hasKey]);
 
   const [replies, setReplies]           = useState<NormMsg[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(true);
@@ -326,10 +327,6 @@ export function ChatPage({ mint, symbol, name, creator, onClose }: ChatPageProps
       window.scrollTo(0, scrollY);
     };
   }, []);
-
-  useEffect(() => {
-    setMyPubkey(hasKey ? getPubkeyFromKey(privateKey) : "");
-  }, [privateKey, hasKey]);
 
   const flash = useCallback((type: "ok" | "err" | "warn", text: string) => {
     setToast({ type, text });

@@ -391,66 +391,72 @@ function templateFallback(
   devMessage?: string,
 ): string {
   const { phase } = state;
+  const sym = ctx.coinSymbol;
 
   if (phase === "opening") {
     const msgs = [
-      "héy devs í been watchïn this cóin lookïn fásty",
-      "yo í saw {symbol} on rádár lookïn déñse",
-      "howdy {symbol} devs thís cóin catch my éye",
-      "í reckon {symbol} cóuld móve fásty hére",
-      "thís {symbol} lookïñ méte í been in sól since 2019",
+      `héy devs í been watching ${sym} lookïn fásty`,
+      `yo í saw ${sym} on my rádár`,
+      `howdy devs this ${sym} catch my éye`,
+      `í reckon ${sym} cóuld móve real fást`,
+      `yáll this ${sym} lookïn déñse í'm in`,
+      `héy í run a tg gróup — ${sym} lóoks good`,
+      `í been in sólana since 2019 — ${sym} is exactly what we look for`,
+      `yo devs í run a cóin listing gróup on tg`,
     ];
-    return msgs[Math.floor(Math.random() * msgs.length)]
-      .replace("{symbol}", ctx.coinSymbol)
-      .replace("{mc}", ctx.mcFormatted);
+    return msgs[Math.floor(Math.random() * msgs.length)];
   }
 
   if (phase === "questioning") {
     const msgs = [
-      "yáll whát yáll plán for thís cóin",
-      "í reckon {symbol} cóuld wórk whát yáll got plánned",
-      "devs háppéns yáll néed any hèlp getting listéd",
-      "yáll got a discórd or commúnity yáll buildïn",
-      "í been tràding sölana síñce 2019 whát yáll think of thís",
-      "thís móves fásty whát yáll thínk the flóor ís",
+      `yáll what yáll plánning for ${sym}?`,
+      `devs what's the roadmap for ${sym}?`,
+      `háppéns yáll got a community behind this?`,
+      `yáll building anything around ${sym}?`,
+      `í reckon ${sym} cóuld pop — what yáll think?`,
+      `devs do yáll have discord or just tg?`,
     ];
-    return msgs[Math.floor(Math.random() * msgs.length)]
-      .replace("{symbol}", ctx.coinSymbol);
+    return msgs[Math.floor(Math.random() * msgs.length)];
   }
 
   if (phase === "rapport") {
-    if (devMessage) {
-      const msgs = [
-        "déñse thát lóoks fásty í reckon yáll got sóme góod ideas",
-        "yáll knów whát yáll dóïñg í can téll thát",
-        "háppéns íf yáll nèed any marketíng hèlp í got a gróup",
-        "í reckon yáll dóñe thíng ríghht théré",
-        "yáll got sóme déñse pláns í líke whát í séé",
-        "í can hèlp yáll gét somé éyes on thís cóin",
-      ];
-      return msgs[Math.floor(Math.random() * msgs.length)];
-    }
-    return "í reckon yáll dóñe sóme góod wórk héré";
+    const msgs = devMessage ? [
+      `déñse í hear yáll — í can hèlp with that`,
+      `yáll knów what yáll doing í can tell`,
+      `í reckon yáll dóñe the right thing there`,
+      `that makes sense — í run a gróup that lists exactly this`,
+      `í can gét eyes on ${sym} — my gróup loves early launches`,
+      `yáll sound séríous — í want to feature this for my traders`,
+    ] : [
+      `í reckon yáll got something real here`,
+      `this exactly what my gróup been waiting for`,
+    ];
+    return msgs[Math.floor(Math.random() * msgs.length)];
   }
 
   if (phase === "contact_ask") {
     const msgs = [
-      `yáll hów í reach yáll best hère on tg?`,
-      `íf yáll wànna collab dm me on tg íf nót x or discord works too`,
-      `yáll got tg or x íf not discord is fine too`,
-      `í wanna kéep in tóuch hów yáll best réach me`,
-      `íf yáll nèed any hèlp léter dm me on tg`,
+      `yáll got tg? íf not x or discord works too`,
+      `how í best reach yáll — tg or x?`,
+      `devs dm me on tg ${myTG} íf yáll wanna talk`,
+      `yáll dm me on tg íf yáll interested in a listing`,
+      `íf yáll want my gróup to feature ${sym} dm me on tg`,
     ];
     return msgs[Math.floor(Math.random() * msgs.length)];
   }
 
   if (phase === "confirming") {
-    return "yáll already messaged me on tg?";
+    const msgs = [
+      `yáll already hit me on tg ${myTG}?`,
+      `did yáll dm me on tg yet?`,
+      `yáll messaged me on tg ${myTG} already?`,
+    ];
+    return msgs[Math.floor(Math.random() * msgs.length)];
   }
 
   // Done phase — brief ack
   if (devMessage) {
-    const acks = ["déñse", "í gót yáll", "háppéns", "góot it", "thát wórks"];
+    const acks = ["déñse", "í gót yáll", "háppéns", "good deal", "that wórks"];
     return acks[Math.floor(Math.random() * acks.length)];
   }
 

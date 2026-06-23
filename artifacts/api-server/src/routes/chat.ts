@@ -99,7 +99,7 @@ function resolveKey(clientKey?: string): string | null {
   return k || null;
 }
 
-/** Fallback: fetch comments from pump.fun REST API (no auth required for reading) */
+/** Fetch comments from pump.fun REST API (no auth required for reading) */
 async function fetchPumpFunRepliesRest(mint: string): Promise<unknown[]> {
   const urls = [
     `${PUMP_API}/coins/${mint}/replies?limit=50&offset=0`,
@@ -109,7 +109,7 @@ async function fetchPumpFunRepliesRest(mint: string): Promise<unknown[]> {
     try {
       const res = await axios.get(url, {
         headers: { ...PUMP_HEADERS, Authorization: undefined },
-        timeout: 8000,
+        timeout: 6000,
         validateStatus: () => true,
       });
       if (res.status === 200) {
@@ -131,78 +131,71 @@ router.get("/chat/replies/:mint", async (req, res) => {
   const clientKeyHeader = req.headers["x-pump-key"] as string | undefined;
   const authKey = resolveKey(clientKeyHeader);
 
-  // 1. Try real pump.fun livechat history via Socket.IO (requires auth)
-  if (authKey) {
-    try {
-      const messages = await Promise.race([
-        livechatFetchHistory(authKey, mint),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("pump.fun livechat fetch timeout")), 12_000),
+  // ── Run REST and livechat IN PARALLEL — return whichever has data first ──
+  let responded = false;
+  const sendOnce = (
+    replies: unknown[],
+    source: "pump.fun" | "inapp",
+    requiresAuth: boolean,
+  ) => {
+    if (responded) return;
+    responded = true;
+    res.json({ replies, source, isAppLocked, allowedPubkeys, requiresAuth });
+  };
+
+  // Promise that resolves when REST data arrives (if any)
+  const restRace = fetchPumpFunRepliesRest(mint)
+    .then((data) => {
+      if (data.length > 0) sendOnce(data, "pump.fun", false);
+      return data;
+    })
+    .catch(() => [] as unknown[]);
+
+  // Promise that resolves when livechat history arrives (if auth key present)
+  const livechatRace = authKey
+    ? Promise.race([
+        livechatFetchHistory(authKey, mint).then((msgs) => {
+          const replies = msgs.map((m) => ({
+            id: m.id,
+            username: m.username ?? null,
+            user_pubkey: m.address ?? m.user_address ?? "",
+            profile_image: m.profile_image ?? m.avatarUrl ?? null,
+            text: m.message ?? "",
+            timestamp:
+              typeof m.timestamp === "number"
+                ? m.timestamp
+                : typeof m.timestamp === "string"
+                  ? Date.parse(m.timestamp) || Date.now()
+                  : Date.now(),
+          }));
+          if (replies.length > 0) sendOnce(replies, "pump.fun", false);
+          return replies;
+        }),
+        new Promise<unknown[]>((_, reject) =>
+          setTimeout(() => reject(new Error("livechat timeout")), 9_000),
         ),
-      ]);
-      const replies = messages.map((m) => ({
-        id: m.id,
-        username: m.username ?? null,
-        user_pubkey: m.address ?? m.user_address ?? "",
-        profile_image: m.profile_image ?? m.avatarUrl ?? null,
-        text: m.message ?? "",
-        timestamp:
-          typeof m.timestamp === "number"
-            ? m.timestamp
-            : typeof m.timestamp === "string"
-              ? Date.parse(m.timestamp) || Date.now()
-              : Date.now(),
-      }));
-      logger.info({ mint, count: replies.length }, "Fetched real pump.fun livechat history");
-      return res.json({
-        replies,
-        isAppLocked,
-        allowedPubkeys,
-        source: "pump.fun",
-        requiresAuth: false,
-      });
-    } catch (err) {
-      logger.warn({ mint, err: (err as Error).message }, "pump.fun livechat fetch failed, trying REST fallback");
-    }
+      ]).catch(() => [] as unknown[])
+    : Promise.resolve([] as unknown[]);
+
+  // Wait for both with a cap of 10s total
+  await Promise.race([
+    Promise.allSettled([restRace, livechatRace]),
+    new Promise<void>((r) => setTimeout(r, 10_000)),
+  ]);
+
+  // If neither source had data, fall back to in-app stored messages
+  if (!responded) {
+    logger.info({ mint, authKey: !!authKey }, "chat/replies: all sources empty — returning in-app");
+    const stored = messageStore.get(mint) ?? [];
+    const replies = stored.map((m) => ({
+      id: m.id,
+      username: m.username,
+      user_pubkey: m.pubkey,
+      text: m.text,
+      timestamp: m.timestamp,
+    }));
+    sendOnce(replies, "inapp", !authKey && stored.length === 0);
   }
-
-  // 2. Try pump.fun REST API as fallback (no auth needed for reading)
-  try {
-    const restReplies = await Promise.race([
-      fetchPumpFunRepliesRest(mint),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("REST fetch timeout")), 8_000)),
-    ]);
-    if (restReplies.length > 0) {
-      logger.info({ mint, count: restReplies.length }, "Fetched pump.fun replies via REST fallback");
-      return res.json({
-        replies: restReplies,
-        isAppLocked,
-        allowedPubkeys,
-        source: "pump.fun",
-        requiresAuth: false,
-      });
-    }
-  } catch (err) {
-    logger.warn({ mint, err: (err as Error).message }, "pump.fun REST fallback also failed");
-  }
-
-  // 3. Fall back to in-app stored messages
-  const stored = messageStore.get(mint) ?? [];
-  const replies = stored.map(m => ({
-    id: m.id,
-    username: m.username,
-    user_pubkey: m.pubkey,
-    text: m.text,
-    timestamp: m.timestamp,
-  }));
-
-  return res.json({
-    replies,
-    isAppLocked,
-    allowedPubkeys,
-    source: "inapp",
-    requiresAuth: !authKey && stored.length === 0,
-  });
 });
 
 // ── POST /api/chat/post ──────────────────────────────────────────────────────
@@ -237,7 +230,7 @@ router.post("/chat/post", async (req, res) => {
 
   const text = message.trim();
 
-  // ── Real pump.fun reply via livechat WebSocket (sendMessage event).
+  // ── Real pump.fun reply via livechat WebSocket
   let last401Detail = "";
   let lastNonAuthDetail = "";
   let lastNonAuthKind = "OTHER";

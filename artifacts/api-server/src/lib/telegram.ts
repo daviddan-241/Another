@@ -69,10 +69,13 @@ function buildMessage(coin: ScannedCoin): string {
     ? `\n🔍 <a href="https://pump.fun/profile/${coin.creator}">Dev wallet →</a>`
     : "";
 
+  // CA always shown prominently for quick copy
+  const caLine = `\n📋 CA: <code>${coin.mint}</code>`;
+
   return (
     `${typeIcon} <b>${coin.name}</b> <code>$${coin.symbol}</code>\n` +
     `${isLive ? "🔴 LIVESTREAM" : "💬 DISCORD"}  ·  MC: <b>${formatMC(coin.marketCap)}</b>  ·  Age: <b>${formatAge(coin.ageMinutes)}</b>\n` +
-    `📡 ${platformLabel}${discordLine}${devLine}${devBubbleLink}\n\n` +
+    `📡 ${platformLabel}${caLine}${discordLine}${devLine}${devBubbleLink}\n\n` +
     `<a href="${coin.pumpUrl}">${platformEmoji} Open on ${platformLabel}</a>`
   );
 }
