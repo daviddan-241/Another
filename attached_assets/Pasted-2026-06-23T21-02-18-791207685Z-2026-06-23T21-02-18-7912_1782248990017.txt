@@ -1,0 +1,50 @@
+2026-06-23T21:02:18.791207685Z 
+2026-06-23T21:02:18.791213105Z #7 [internal] load build context
+2026-06-23T21:02:18.791217935Z #7 transferring context: 9.29MB 0.1s done
+2026-06-23T21:02:18.791221946Z #7 DONE 0.1s
+2026-06-23T21:02:18.791225875Z 
+2026-06-23T21:02:18.791231796Z #8 [builder  7/12] COPY artifacts/pump-scanner/package.json ./artifacts/pump-scanner/
+2026-06-23T21:02:18.791235846Z #8 CACHED
+2026-06-23T21:02:18.791239636Z 
+2026-06-23T21:02:18.791243606Z #9 [builder  4/12] WORKDIR /app
+2026-06-23T21:02:18.791247526Z #9 CACHED
+2026-06-23T21:02:18.791251376Z 
+2026-06-23T21:02:18.791255326Z #10 [builder  3/12] RUN corepack enable && corepack prepare pnpm@latest --activate
+2026-06-23T21:02:18.791259347Z #10 CACHED
+2026-06-23T21:02:18.791263137Z 
+2026-06-23T21:02:18.791267037Z #11 [builder  6/12] COPY artifacts/api-server/package.json ./artifacts/api-server/
+2026-06-23T21:02:18.791270977Z #11 CACHED
+2026-06-23T21:02:18.791274707Z 
+2026-06-23T21:02:18.791279067Z #12 [builder  5/12] COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+2026-06-23T21:02:18.791282927Z #12 CACHED
+2026-06-23T21:02:18.791286667Z 
+2026-06-23T21:02:18.791290588Z #13 [runner  8/11] COPY packages ./packages
+2026-06-23T21:02:18.791294948Z #13 ERROR: failed to calculate checksum of ref plbjbtfd6l2o7dtw91t6xlfkz::omz6n9shuacrsshvvb26jmy3s: "/packages": not found
+2026-06-23T21:02:18.791298688Z 
+2026-06-23T21:02:18.791302568Z #14 [builder  8/12] RUN ls packages 2>/dev/null && cp -r packages /app/packages || true
+2026-06-23T21:02:18.791317798Z #14 CACHED
+2026-06-23T21:02:18.791321838Z 
+2026-06-23T21:02:18.791325798Z #15 [builder  9/12] COPY packages ./packages
+2026-06-23T21:02:18.791329859Z #15 ERROR: failed to calculate checksum of ref plbjbtfd6l2o7dtw91t6xlfkz::omz6n9shuacrsshvvb26jmy3s: "/packages": not found
+2026-06-23T21:02:18.791333729Z 
+2026-06-23T21:02:18.791346219Z #16 [builder  2/12] RUN apt-get update && apt-get install -y --no-install-recommends     python3 make g++     && rm -rf /var/lib/apt/lists/*
+2026-06-23T21:02:18.791360719Z #16 CANCELED
+2026-06-23T21:02:18.791363559Z ------
+2026-06-23T21:02:18.79136614Z  > importing cache manifest
+2026-06-23T21:02:18.79136876Z ------
+2026-06-23T21:02:18.79137124Z ------
+2026-06-23T21:02:18.79137374Z  > [runner  8/11] COPY packages ./packages:
+2026-06-23T21:02:18.79137631Z ------
+2026-06-23T21:02:18.79137872Z ------
+2026-06-23T21:02:18.79138124Z  > [builder  9/12] COPY packages ./packages:
+2026-06-23T21:02:18.79138373Z ------
+2026-06-23T21:02:18.792523744Z Dockerfile:16
+2026-06-23T21:02:18.792541484Z --------------------
+2026-06-23T21:02:18.792544474Z   14 |     
+2026-06-23T21:02:18.792546784Z   15 |     RUN ls packages 2>/dev/null && cp -r packages /app/packages || true
+2026-06-23T21:02:18.792549084Z   16 | >>> COPY packages ./packages
+2026-06-23T21:02:18.792551054Z   17 |     
+2026-06-23T21:02:18.792553025Z   18 |     RUN pnpm install --no-frozen-lockfile
+2026-06-23T21:02:18.792555054Z --------------------
+2026-06-23T21:02:18.792558635Z error: failed to solve: failed to compute cache key: failed to calculate checksum of ref plbjbtfd6l2o7dtw91t6xlfkz::omz6n9shuacrsshvvb26jmy3s: "/packages": not found
+2026-06-23T21:02:18.804692181Z error: exit status 1

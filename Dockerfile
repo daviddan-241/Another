@@ -11,9 +11,10 @@ WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY artifacts/pump-scanner/package.json ./artifacts/pump-scanner/
-
-RUN ls packages 2>/dev/null && cp -r packages /app/packages || true
-COPY packages ./packages
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/db/package.json ./lib/db/
 
 RUN pnpm install --no-frozen-lockfile
 
@@ -35,7 +36,10 @@ WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY artifacts/pump-scanner/package.json ./artifacts/pump-scanner/
-COPY packages ./packages
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/db/package.json ./lib/db/
 
 RUN pnpm install --no-frozen-lockfile --prod
 
