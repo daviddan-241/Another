@@ -158,6 +158,7 @@ async function getPrivyToken(privateKeyB58: string): Promise<string> {
 }
 
 export { getPrivyToken, getPrivyTokens };
+export default router;
 
 // POST /api/auth/token
 router.post("/auth/token", async (req, res) => {

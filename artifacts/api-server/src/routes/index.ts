@@ -9,6 +9,7 @@ import portfolioRouter from "./portfolio";
 import telegramRouter from "./telegram";
 import configRouter from "./config";
 import pushRouter from "./push";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(portfolioRouter);
 router.use(telegramRouter);
 router.use(configRouter);
 router.use(pushRouter);
+router.use(authRouter);
 
 export default router;
