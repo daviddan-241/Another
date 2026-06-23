@@ -22,7 +22,7 @@ const router = Router();
 // Default Privy App ID for pump.fun — may be overridden from a pasted JWT.
 let privyAppId  = "cm1p2gzot03fzqty5xzgjgthq";
 let privyClientId = "client-WY5brZnRUhFQnX6ip6yRzypC9WLtB9j8mFnq4cyPBMq8W";
-const PRIVY_SDK = "react-auth:2.21.4";
+const PRIVY_SDK = "react-auth:2.4.2";
 // pump.fun uses privy.io as the SIWS domain (not pump.fun itself)
 const DOMAIN    = "privy.io";
 const URI       = "https://privy.io";
@@ -120,35 +120,53 @@ async function getPrivyTokens(privateKeyB58: string): Promise<string[]> {
   }
 
   const PRIVY_API = "https://auth.privy.io/api/v1";
-  const { data: init } = await axios.post<{ nonce: string; expires_at: string }>(
+  const initRes = await axios.post<{ nonce: string; expires_at: string }>(
     `${PRIVY_API}/siws/init`,
     { address: pubkey },
-    { headers: getPrivyHeaders(), timeout: 10_000 },
+    { headers: getPrivyHeaders(), timeout: 10_000, validateStatus: () => true },
   );
+  if (initRes.status !== 200) {
+    const detail = (initRes.data as Record<string, unknown>)?.error ?? JSON.stringify(initRes.data).slice(0, 200);
+    throw new Error(`Privy siws/init failed (${initRes.status}): ${detail}`);
+  }
+  const init = initRes.data;
 
   const issuedAt = new Date().toISOString();
   const message  = buildMessage(pubkey, init.nonce, issuedAt, init.expires_at);
   const sig = nacl.sign.detached(new TextEncoder().encode(message), kp.secretKey);
 
-  const { data: auth } = await axios.post<{ token?: string; access_token?: string; identity_token?: string }>(
-    `${PRIVY_API}/siws/authenticate`,
-    {
-      message,
-      signature:         b64url(sig),
-      chainId:           "solana:mainnet",
-      walletClientType:  "phantom",
-      connectorType:     "injected",
-    },
-    { headers: getPrivyHeaders(), timeout: 10_000 },
-  );
+  // Try both signature encodings — Privy accepts base64url on newer SDK, bs58 on older.
+  const sigVariants = [b64url(sig), bs58.encode(sig)];
+  let lastPrivyError = "";
 
-  const tokens = [auth.identity_token, auth.access_token, auth.token]
-    .filter((t): t is string => !!t);
-  if (tokens.length === 0) throw new Error("No tokens in Privy response");
+  for (const sigStr of sigVariants) {
+    const authRes = await axios.post<{ token?: string; access_token?: string; identity_token?: string }>(
+      `${PRIVY_API}/siws/authenticate`,
+      {
+        message,
+        signature:        sigStr,
+        chainId:          "solana:mainnet",
+        walletClientType: "phantom",
+        connectorType:    "injected",
+      },
+      { headers: getPrivyHeaders(), timeout: 10_000, validateStatus: () => true },
+    );
+    if (authRes.status === 200) {
+      const auth = authRes.data;
+      const tokens = [auth.identity_token, auth.access_token, auth.token]
+        .filter((t): t is string => !!t);
+      if (tokens.length > 0) {
+        const expiresAt = new Date(init.expires_at).getTime() - 5 * 60_000;
+        cache.set(pubkey, { tokens, expiresAt });
+        return tokens;
+      }
+    }
+    const errData = authRes.data as Record<string, unknown>;
+    lastPrivyError = String(errData?.error ?? errData?.message ?? JSON.stringify(authRes.data).slice(0, 200));
+    logger.warn({ status: authRes.status, sigEncoding: sigStr.length < 90 ? "bs58" : "b64url", err: lastPrivyError }, "Privy siws/authenticate variant failed");
+  }
 
-  const expiresAt = new Date(init.expires_at).getTime() - 5 * 60_000;
-  cache.set(pubkey, { tokens, expiresAt });
-  return tokens;
+  throw new Error(`Privy siws/authenticate failed: ${lastPrivyError}`);
 }
 
 // Back-compat wrapper used elsewhere — returns the most-likely-to-work token.
