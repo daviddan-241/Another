@@ -1,0 +1,50 @@
+2026-06-23T21:15:08.587680486Z #18 0.436     at Module.require (node:internal/modules/cjs/loader:1289:19)
+2026-06-23T21:15:08.587683396Z #18 0.436     at require (node:internal/modules/helpers:182:18)
+2026-06-23T21:15:08.587686426Z #18 0.436     at ../store/index/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:54590:25)
+2026-06-23T21:15:08.587689206Z #18 0.436     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587691776Z #18 0.436     at ../resolving/npm-resolver/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:65700:5)
+2026-06-23T21:15:08.587694366Z #18 0.436     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587710686Z #18 0.436     at ../workspace/projects-graph/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:65838:5)
+2026-06-23T21:15:08.587714097Z #18 0.436     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587717107Z #18 0.436     at ../workspace/projects-filter/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:73232:5) {
+2026-06-23T21:15:08.587720227Z #18 0.436   code: 'ERR_UNKNOWN_BUILTIN_MODULE'
+2026-06-23T21:15:08.587723167Z #18 0.436 }
+2026-06-23T21:15:08.587725937Z #18 0.436 
+2026-06-23T21:15:08.587729327Z #18 0.436 Node.js v20.20.2
+2026-06-23T21:15:08.587736017Z #18 ERROR: process "/bin/sh -c pnpm install --no-frozen-lockfile" did not complete successfully: exit code: 1
+2026-06-23T21:15:08.587739107Z ------
+2026-06-23T21:15:08.587741937Z  > [builder 12/14] RUN pnpm install --no-frozen-lockfile:
+2026-06-23T21:15:08.587744817Z 0.436     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587749907Z 0.436     at ../resolving/npm-resolver/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:65700:5)
+2026-06-23T21:15:08.587752777Z 0.436     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587755547Z 0.436     at ../workspace/projects-graph/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:65838:5)
+2026-06-23T21:15:08.587758247Z 0.436     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587760998Z 0.436     at ../workspace/projects-filter/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:73232:5) {
+2026-06-23T21:15:08.587763678Z 0.436   code: 'ERR_UNKNOWN_BUILTIN_MODULE'
+2026-06-23T21:15:08.587775948Z 0.436 }
+2026-06-23T21:15:08.587778858Z 0.436 
+2026-06-23T21:15:08.587781788Z 0.436 Node.js v20.20.2
+2026-06-23T21:15:08.587784958Z ------
+2026-06-23T21:15:08.587788238Z ------
+2026-06-23T21:15:08.587791218Z  > [runner 12/14] RUN pnpm install --no-frozen-lockfile --prod:
+2026-06-23T21:15:08.587800008Z 0.435     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587803448Z 0.435     at ../resolving/npm-resolver/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:65700:5)
+2026-06-23T21:15:08.587806188Z 0.435     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587809179Z 0.435     at ../workspace/projects-graph/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:65838:5)
+2026-06-23T21:15:08.587812279Z 0.435     at __init (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:17:58)
+2026-06-23T21:15:08.587815519Z 0.435     at ../workspace/projects-filter/lib/index.js (file:///root/.cache/node/corepack/v1/pnpm/11.9.0/dist/pnpm.mjs:73232:5) {
+2026-06-23T21:15:08.587818699Z 0.435   code: 'ERR_UNKNOWN_BUILTIN_MODULE'
+2026-06-23T21:15:08.587821909Z 0.435 }
+2026-06-23T21:15:08.587825109Z 0.435 
+2026-06-23T21:15:08.587827319Z 0.435 Node.js v20.20.2
+2026-06-23T21:15:08.587829319Z ------
+2026-06-23T21:15:08.588458831Z Dockerfile:19
+2026-06-23T21:15:08.588469131Z --------------------
+2026-06-23T21:15:08.588472891Z   17 |     COPY lib/db/package.json ./lib/db/
+2026-06-23T21:15:08.588476081Z   18 |     
+2026-06-23T21:15:08.588479471Z   19 | >>> RUN pnpm install --no-frozen-lockfile
+2026-06-23T21:15:08.588495392Z   20 |     
+2026-06-23T21:15:08.588498852Z   21 |     COPY . .
+2026-06-23T21:15:08.588502101Z --------------------
+2026-06-23T21:15:08.588505372Z error: failed to solve: process "/bin/sh -c pnpm install --no-frozen-lockfile" did not complete successfully: exit code: 1
+2026-06-23T21:15:08.607024436Z error: exit status 1
