@@ -74,11 +74,11 @@ async function fetchReplies(mint: string): Promise<Reply[]> {
   return data.replies ?? [];
 }
 
-async function postReply(mint: string, message: string, privateKey: string) {
+async function postReply(mint: string, message: string, privateKey: string, privyToken?: string) {
   const res = await fetch(`${BASE}/api/chat/post`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mint, message, privateKey }),
+    body: JSON.stringify({ mint, message, privateKey, privyToken: privyToken?.trim() || undefined }),
   });
   const json = await res.json() as { success?: boolean; error?: string; detail?: string; postedToPumpFun?: boolean; pumpFunError?: string };
   return { ok: res.ok, ...json };
@@ -116,7 +116,7 @@ function formatTime(ts?: string | number): string {
 }
 
 export function ChatPanel({ mint, symbol }: ChatPanelProps) {
-  const { privateKey } = useSettings();
+  const { privateKey, privyToken } = useSettings();
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -161,7 +161,7 @@ export function ChatPanel({ mint, symbol }: ChatPanelProps) {
     const text = message.trim();
     setMessage("");
     try {
-      const result = await postReply(mint, text, privateKey);
+      const result = await postReply(mint, text, privateKey, privyToken);
       if (result.success) {
         if (result.postedToPumpFun) {
           flash("success", "Posted to pump.fun ✓");

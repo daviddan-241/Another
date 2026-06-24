@@ -200,10 +200,11 @@ router.get("/chat/replies/:mint", async (req, res) => {
 
 // ── POST /api/chat/post ──────────────────────────────────────────────────────
 router.post("/chat/post", async (req, res) => {
-  const { mint, message, privateKey: clientKey } = req.body as {
+  const { mint, message, privateKey: clientKey, privyToken } = req.body as {
     mint: string;
     message: string;
     privateKey?: string;
+    privyToken?: string;
   };
   const privateKey = resolveKey(clientKey);
 
@@ -231,12 +232,14 @@ router.post("/chat/post", async (req, res) => {
   const text = message.trim();
 
   // ── Real pump.fun reply via livechat WebSocket
+  // Pass the Privy JWT directly if provided — skips the broken SIWS flow
+  const directJwt = (privyToken ?? "").trim().startsWith("eyJ") ? privyToken!.trim() : undefined;
   let last401Detail = "";
   let lastNonAuthDetail = "";
   let lastNonAuthKind = "OTHER";
   try {
     const ack = await Promise.race([
-      livechatSendMessage(privateKey, mint, text),
+      livechatSendMessage(privateKey, mint, text, directJwt),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("pump.fun livechat send timeout")), 15_000),
       ),

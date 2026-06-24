@@ -22,10 +22,10 @@ const router = Router();
 // Default Privy App ID for pump.fun — may be overridden from a pasted JWT.
 let privyAppId  = "cm1p2gzot03fzqty5xzgjgthq";
 let privyClientId = "client-WY5brZnRUhFQnX6ip6yRzypC9WLtB9j8mFnq4cyPBMq8W";
-const PRIVY_SDK = "react-auth:2.4.2";
-// pump.fun uses privy.io as the SIWS domain (not pump.fun itself)
-const DOMAIN    = "privy.io";
-const URI       = "https://privy.io";
+const PRIVY_SDK = "react-auth:2.7.4";
+// pump.fun is the SIWS domain — Privy uses the app's origin, not privy.io
+const DOMAIN    = "pump.fun";
+const URI       = "https://pump.fun";
 const STATEMENT = "By signing, you are proving you own this wallet and logging in. This does not initiate a transaction or cost any fees.";
 
 function getPrivyHeaders() {

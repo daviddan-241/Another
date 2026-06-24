@@ -247,7 +247,7 @@ function MessageBubble({ msg, isMe }: { msg: NormMsg; isMe: boolean }) {
 
 /* ── Main ChatPage ──────────────────────────────────────────────────────── */
 export function ChatPage({ mint, symbol, name, creator, onClose }: ChatPageProps) {
-  const { privateKey } = useSettings();
+  const { privateKey, privyToken } = useSettings();
   const hasKey = !!privateKey?.trim();
 
   const [tab, setTab]             = useState<Tab>("chat");
@@ -503,7 +503,7 @@ export function ChatPage({ mint, symbol, name, creator, onClose }: ChatPageProps
       const r = await fetch(`${BASE}/api/chat/post`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mint, message: text, privateKey: privateKey.trim() }),
+        body: JSON.stringify({ mint, message: text, privateKey: privateKey.trim(), privyToken: privyToken?.trim() || undefined }),
       });
       const j = await r.json() as {
         success?: boolean; error?: string;

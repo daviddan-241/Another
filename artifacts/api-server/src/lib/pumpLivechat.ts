@@ -106,7 +106,7 @@ export async function ensureRoom(privateKey: string, mint: string): Promise<void
   await openRoom(privateKey, mint);
 }
 
-async function openRoom(privateKey: string, mint: string): Promise<RoomEntry> {
+async function openRoom(privateKey: string, mint: string, privyJwt?: string): Promise<RoomEntry> {
   const { default: bs58 } = await import("bs58");
   const nacl = (await import("tweetnacl")).default;
   const sk = bs58.decode(privateKey.trim());
@@ -122,8 +122,15 @@ async function openRoom(privateKey: string, mint: string): Promise<RoomEntry> {
     return existing;
   }
 
-  const tokens = await getPrivyTokens(privateKey);
-  if (!tokens.length) throw new Error("No Privy tokens available");
+  // If a JWT is provided directly, use it without SIWS
+  let tokens: string[];
+  if (privyJwt && privyJwt.startsWith("eyJ")) {
+    tokens = [privyJwt];
+    logger.info({ mint, pubkey: pubkey.slice(0, 8) }, "pump.fun livechat: using provided Privy JWT directly");
+  } else {
+    tokens = await getPrivyTokens(privateKey);
+    if (!tokens.length) throw new Error("No Privy tokens available");
+  }
 
   let lastErr = "";
   for (const jwt of tokens) {
@@ -195,8 +202,8 @@ async function _tryOpenRoom(jwt: string, pubkey: string, username: string, mint:
 }
 
 /** Fetch up to 50 most recent messages for a coin. */
-export async function fetchHistory(privateKey: string, mint: string): Promise<LivechatMessage[]> {
-  const entry = await openRoom(privateKey, mint);
+export async function fetchHistory(privateKey: string, mint: string, privyJwt?: string): Promise<LivechatMessage[]> {
+  const entry = await openRoom(privateKey, mint, privyJwt);
   return new Promise<LivechatMessage[]>((resolve) => {
     const fallbackTimer = setTimeout(() => resolve(entry.history.slice()), 4_000);
     entry.socket.emit(
@@ -215,8 +222,8 @@ export async function fetchHistory(privateKey: string, mint: string): Promise<Li
 }
 
 /** Post a message to pump.fun's real livechat. Returns the server ack. */
-export async function sendMessage(privateKey: string, mint: string, text: string): Promise<{ ok: boolean; id?: string; error?: string }> {
-  const entry = await openRoom(privateKey, mint);
+export async function sendMessage(privateKey: string, mint: string, text: string, privyJwt?: string): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const entry = await openRoom(privateKey, mint, privyJwt);
   return new Promise<{ ok: boolean; id?: string; error?: string }>((resolve) => {
     const t = setTimeout(() => resolve({ ok: false, error: "pump.fun sendMessage ack timeout" }), 8_000);
     entry.socket.emit(

@@ -4,13 +4,13 @@ import pinoHttp from "pino-http";
 import path from "path";
 import fs from "fs";
 import router from "./routes";
-import { logger } from "./lib/logger";
+import { logger, pinoInstance } from "./lib/logger";
 
 const app: Express = express();
 
 app.use(
   pinoHttp({
-    logger,
+    logger: pinoInstance,
     serializers: {
       req(req) {
         return {

@@ -757,6 +757,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* ── DIAGNOSTICS ── */}
+        <DiagnosticsCard />
+
         {/* ── SECURITY ── */}
         <div style={{ borderRadius: 14, padding: "14px 16px", background: "hsla(45,80%,35%,0.04)", border: "1px solid hsla(45,80%,40%,0.14)" }}>
           <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.08em", color: "hsl(45,80%,52%)", marginBottom: 6 }}>⚠ Security</div>
@@ -768,6 +771,137 @@ export default function SettingsPage() {
       </div>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+/* ── Diagnostics / Server Log Viewer ────────────────────────────────── */
+interface LogEntry { ts: number; level: "info" | "warn" | "error" | "debug"; msg: string; ctx: Record<string, unknown>; }
+
+function DiagnosticsCard() {
+  const [open, setOpen] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<"all" | "warn" | "error">("all");
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        setLoading(true);
+        const r = await fetch(`${BASE}/api/logs?last=150`);
+        if (!r.ok) return;
+        const j = await r.json() as { logs: LogEntry[] };
+        if (active) setLogs(j.logs ?? []);
+      } catch { /* ignore */ } finally { if (active) setLoading(false); }
+    };
+    void poll();
+    const id = setInterval(() => void poll(), 3000);
+    return () => { active = false; clearInterval(id); };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (open && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs, open]);
+
+  const levelColor = (l: string) =>
+    l === "error" ? "hsl(0,70%,65%)" : l === "warn" ? "hsl(45,95%,62%)" : l === "debug" ? "hsl(150,8%,38%)" : "hsl(150,60%,50%)";
+
+  const levelBg = (l: string) =>
+    l === "error" ? "hsla(0,70%,50%,0.13)" : l === "warn" ? "hsla(45,95%,55%,0.08)" : "transparent";
+
+  const filtered = filter === "all" ? logs : logs.filter(e => e.level === filter || (filter === "warn" && (e.level === "warn" || e.level === "error")));
+
+  function fmtCtx(ctx: Record<string, unknown>): string {
+    const skip = new Set(["pid", "hostname", "time"]);
+    const entries = Object.entries(ctx).filter(([k]) => !skip.has(k));
+    if (!entries.length) return "";
+    return " " + entries.map(([k, v]) => {
+      const val = typeof v === "object" && v !== null ? JSON.stringify(v).slice(0, 80) : String(v ?? "").slice(0, 80);
+      return `${k}=${val}`;
+    }).join(" ");
+  }
+
+  return (
+    <div style={S.card}>
+      <div style={S.cardTop} />
+      <div style={S.cardBody}>
+        <button
+          onClick={() => setOpen(v => !v)}
+          style={{ background: "transparent", border: "none", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: 0 }}
+        >
+          <div style={{ ...S.sectionLabel, marginBottom: 0, display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(45,95%,55%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Server Logs
+            {!open && logs.some(e => e.level === "error") && (
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "hsl(0,70%,60%)", display: "inline-block" }} />
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {loading && open && <Spinner />}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="hsl(150,8%,45%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+        </button>
+
+        {open && (
+          <div style={{ marginTop: 14 }}>
+            {/* Filter row */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              {(["all", "warn", "error"] as const).map(f => (
+                <button key={f} onClick={() => setFilter(f)} style={{
+                  fontFamily: "monospace", fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "1px solid",
+                  cursor: "pointer",
+                  background: filter === f ? (f === "error" ? "hsla(0,70%,50%,0.15)" : f === "warn" ? "hsla(45,95%,55%,0.1)" : "hsla(150,60%,30%,0.1)") : "transparent",
+                  borderColor: filter === f ? (f === "error" ? "hsla(0,70%,50%,0.4)" : f === "warn" ? "hsla(45,95%,55%,0.3)" : "hsla(150,60%,35%,0.3)") : "hsla(150,15%,20%,0.5)",
+                  color: filter === f ? (f === "error" ? "hsl(0,70%,65%)" : f === "warn" ? "hsl(45,95%,62%)" : "hsl(150,60%,50%)") : "hsl(150,8%,42%)",
+                }}>
+                  {f === "all" ? "All" : f === "warn" ? "Warn+" : "Errors"}
+                </button>
+              ))}
+              <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: 10, color: "hsl(150,8%,35%)", alignSelf: "center" }}>
+                {filtered.length} entries
+              </span>
+            </div>
+
+            {/* Log terminal */}
+            <div ref={scrollRef} style={{
+              background: "hsl(150,18%,4%)", borderRadius: 10, border: "1px solid hsla(150,15%,14%,0.8)",
+              height: 300, overflowY: "auto", padding: "10px 0", fontFamily: "monospace", fontSize: 11, lineHeight: 1.6,
+            }}>
+              {filtered.length === 0 ? (
+                <div style={{ color: "hsl(150,8%,30%)", textAlign: "center", marginTop: 60 }}>
+                  {loading ? "Loading logs…" : "No logs yet — actions above will appear here."}
+                </div>
+              ) : (
+                filtered.map((e, i) => (
+                  <div key={i} style={{ padding: "2px 12px", background: levelBg(e.level), borderLeft: e.level === "error" ? "2px solid hsl(0,70%,50%)" : e.level === "warn" ? "2px solid hsl(45,95%,55%)" : "2px solid transparent" }}>
+                    <span style={{ color: "hsl(150,8%,30%)" }}>{new Date(e.ts).toLocaleTimeString("en-US", { hour12: false })}</span>
+                    {" "}
+                    <span style={{ color: levelColor(e.level), fontWeight: 700, textTransform: "uppercase" }}>{e.level.slice(0, 4)}</span>
+                    {" "}
+                    <span style={{ color: "hsl(0,0%,88%)" }}>{e.msg}</span>
+                    {Object.keys(e.ctx).filter(k => !["pid","hostname","time"].includes(k)).length > 0 && (
+                      <span style={{ color: "hsl(150,8%,40%)" }}>{fmtCtx(e.ctx)}</span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <p style={{ ...S.hint, marginTop: 8, fontSize: 10, color: "hsl(150,8%,32%)" }}>
+              Live server logs · refreshes every 3s · last 150 entries · errors show in red
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
